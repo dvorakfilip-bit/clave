@@ -1,4 +1,4 @@
-# Dance Festival App
+# Clave
 
 Aplikace pro účastníky tanečních festivalů (např. CSSF 2026 – Rovinj).
 

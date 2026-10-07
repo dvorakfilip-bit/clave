@@ -1,12 +1,14 @@
-# PRD – Dance Festival App
+# PRD – Clave
 
-> Stav: **návrh v0.3** · Datum: 2026-10-07 · Autor: Filip Dvořák
+> Stav: **návrh v0.6** · Datum: 2026-10-07 · Autor: Filip Dvořák
 
 ## 1. Shrnutí
 
+**Clave** (doména **clave.cz**) – název podle základního rytmu salsy; španělsky zároveň „klíč“. Festivaly běží na adresách `clave.cz/<festival>` a v aplikaci se zobrazují jako „Clave · <název festivalu>“.
+
 Webová aplikace (PWA) pro taneční festivaly, která nahrazuje papírový rozpis lekcí. Účastníci v ní procházejí program a skládají si vlastní rozvrh, organizátoři do ní zadávají program a učitelé spravují své medailonky.
 
-Jde o **nekomerční fanouškovský projekt**. Jedna platforma hostí více festivalů a každý organizátor si v ní založí festival pod vlastní adresou (např. `app.cz/cssf-2027`).
+Jde o **nekomerční fanouškovský projekt**. Jedna platforma hostí více festivalů a každý organizátor si v ní založí festival pod vlastní adresou (např. `clave.cz/cssf-2027`).
 
 ## 2. Cíle
 
@@ -35,16 +37,32 @@ Jde o **nekomerční fanouškovský projekt**. Jedna platforma hostí více fest
 |---|---|---|---|
 | **Návštěvník** (nepřihlášený) | – | – | Prohlížet a filtrovat program, číst medailonky učitelů |
 | **Uživatel** | celá platforma | registruje se sám | Vše jako návštěvník + osobní program |
-| **Učitel** | festival | organizátor (povýšením uživatele) | Vše jako uživatel + úprava vlastního medailonku |
+| **Učitel** | festival | organizátor (pozvánkou e-mailem nebo povýšením účtu) | Vše jako uživatel + úprava vlastního medailonku |
 | **Organizátor** | festival | hlavní organizátor festivalu | Správa programu, místností, stylů, učitelů festivalu |
-| **Hlavní organizátor** | festival | správce platformy | Vše jako organizátor + přidávání/odebírání organizátorů |
-| **Správce platformy** | celá platforma | – | Zakládání festivalů, určení hlavního organizátora |
+| **Hlavní organizátor** | festival | správce platformy nebo jiný hlavní organizátor | Vše jako organizátor + přidávání/odebírání organizátorů a hlavních organizátorů |
+| **Správce platformy** | celá platforma | jiný správce platformy | Zakládání festivalů, určení hlavního organizátora, přidávání správců platformy |
 
 Pravidla:
 - Organizátor má práva **jen ke svému festivalu**.
 - Učitel je k festivalu přiřazen organizátorem. Účet i medailonek jsou **globální** (jeden napříč festivaly).
-- Organizátor může založit uživatelský účet a povýšit ho na učitele.
+- Organizátor může učitele pozvat e-mailem nebo povýšit existující účet na učitele.
+- Učitel může být u lekcí uvedený **ještě před přijetím pozvánky** (i bez účtu); medailonek mu zatím vyplní organizátor. Po přijetí pozvánky se profil propojí s jeho účtem.
+- **Vyhledávání účtů:** běžné uživatele lze najít jen podle **přesného e-mailu** (ochrana soukromí); učitele (veřejné profily) i podle jména.
+- **Smazání účtu učitele:** u lekcí (i minulých festivalů) zůstane jen jméno, medailonek a fotka se smažou.
+- Správců platformy může být víc; prvním je provozovatel, další přidává stávající správce platformy.
 - Organizátor může upravit medailonek učitele (např. když ho učitel nevyplní).
+- Festival může mít **více hlavních organizátorů**; hlavní organizátor může roli předat nebo udělit dalšímu.
+- Organizátoři mají v v1.0 stejná práva (jen dvě úrovně: hlavní organizátor / organizátor). Jemnější úrovně oprávnění: v1.1.
+
+### 4.1 Přístup organizátorů
+- Organizátoři se přihlašují stejně jako ostatní uživatelé (Google / magic link), bez dalšího ověření. Zabezpečení se přehodnotí ve v1.1 podle zkušeností (případně jen Google účet).
+- **Pozvánka e-mailem:**
+  - Správce platformy pozve hlavního organizátora zadáním e-mailu při založení festivalu.
+  - Hlavní organizátor stejným způsobem zve další organizátory.
+  - Pozvanému přijde e-mail s odkazem; po přihlášení s daným e-mailem dostane roli automaticky. Funguje i pro lidi, kteří ještě nemají účet.
+  - Pozvánku lze zrušit, dokud není přijata.
+- **Povýšení stávajícího účtu:** hlavní organizátor může povýšit existující uživatelský účet na organizátora (bez pozvánky).
+- Žádost o založení festivalu formulářem v aplikaci (schvaluje správce platformy): v1.1.
 
 ## 5. Funkce
 
@@ -55,7 +73,12 @@ Pravidla:
 - Řádky = časové sloty, sloupce = místnosti.
 - Lekce je obarvená podle **stylu**.
 - Karta lekce: název / co se učí, učitel(é), level, čas, místnost.
-- Večerní **párty** se zobrazují v programu jako samostatný typ akce (bez levelu, učitel volitelný).
+- Lekce může zabírat **více po sobě jdoucích slotů** (workshop); v mřížce se roztáhne přes více řádků.
+- Večerní **párty** se zobrazují v programu jako samostatný typ akce (bez levelu, učitel volitelný). Párty přes půlnoc patří ke dni, kdy začala (konec se zobrazí jako např. „04:00 (+1)“).
+- Všechny časy se zobrazují v **časovém pásmu festivalu**, bez ohledu na nastavení telefonu.
+
+**Teď probíhá**
+- Během festivalu se aplikace otevře na dnešním dni, posune se na aktuální čas a probíhající lekce zvýrazní (zvýrazňující barvou festivalu).
 
 **Level**
 - Škála 0–3 kolečka v krocích po 0,5 (tj. 7 hodnot: 0; 0,5; 1; … 3).
@@ -76,6 +99,10 @@ Pravidla:
 - Seznam aktuálních a nadcházejících zveřejněných festivalů.
 - Přihlášený uživatel vidí nahoře festivaly, kde má osobní program.
 - Archiv minulých festivalů.
+
+**Praktické informace** (menu „Více“)
+- Stránky festivalu s textem a obrázky (CZ/EN) – např. mapa areálu, adresy sálů, kontakty, pravidla.
+- Dostupné i offline.
 
 **Mobilní zobrazení**
 - Mřížka s horizontálním scrollem přes místnosti a ukotveným sloupcem s časy.
@@ -98,7 +125,7 @@ Pravidla:
 ### 5.4 Správa festivalu (organizátor)
 
 **Festival**
-- Název, URL slug, termín (dny), popis.
+- Název, URL slug, termín (dny), **časové pásmo**, popis.
 - Vizuální identita (logo, banner, barvy, písmo) – nastavuje hlavní organizátor, viz kap. 7.
 - Stav **koncept / zveřejněno / archiv**:
   - Koncept: program vidí jen organizátoři festivalu.
@@ -117,20 +144,34 @@ Pravidla:
 - Seznam stylů spravuje organizátor, každému přiřadí libovolnou barvu (RGB).
 
 **Lekce**
-- Den, slot, místnost, styl, název / co se učí, level, 1+ učitelů, volitelně popis.
+- Den, počáteční a koncový slot (lekce může trvat více slotů), místnost, styl, název / co se učí, level, 1+ učitelů, volitelně popis.
 - V jednom slotu a místnosti smí být **jen jedna lekce** (hlídá formulář i import).
 - Úpravy i za běhu festivalu (spouští informování o změnách).
 
 **Párty**
-- Den, čas (volný, mimo sloty), místo, název, popis.
+- Den, čas (volný, mimo sloty, může přesahovat přes půlnoc), místo, název, popis.
 
 **Učitelé**
-- Vyhledání existujícího učitele na platformě a přidání do festivalu.
-- Založení nového uživatele a povýšení na učitele.
+- Vyhledání existujícího učitele na platformě (podle jména) a přidání do festivalu.
+- Pozvání nového učitele e-mailem, nebo povýšení existujícího účtu (hledání podle přesného e-mailu).
+- Přidání učitele bez účtu (jen jméno + medailonek), pozvánku lze poslat i později.
 - Úprava medailonku učitele. Změna se projeví na všech festivalech; učitel vidí historii změn (kdo, kdy) a může změnu vrátit.
 
 **Organizátoři** (hlavní organizátor)
-- Přidání / odebrání dalších organizátorů festivalu.
+- Pozvání e-mailem / povýšení stávajícího účtu (viz 4.1).
+- Odebrání organizátorů, udělení / předání role hlavního organizátora.
+
+**Praktické informace**
+- Vytváření, úprava, řazení a mazání informačních stránek (text, obrázky, CZ/EN).
+
+**QR kód festivalu**
+- V nastavení festivalu ke stažení QR kód odkazující na `clave.cz/<festival>` s logem Clave uprostřed (pravidla viz 7.6).
+- Formáty PNG (vysoké rozlišení) a SVG pro tisk (plakáty, stojánky, materiály).
+
+**Log změn**
+- Záznam všech změn festivalu: kdo, kdy, co (např. „Petr přesunul Salsa On2 do Sálu B“).
+- Zahrnuje program, místnosti, styly, učitele, organizátory, vizuální identitu i importy.
+- Vidí ho organizátoři festivalu.
 
 ### 5.4.1 Import programu
 
@@ -163,7 +204,8 @@ Pravidla:
 
 ### 5.6 Správce platformy
 
-- Založení festivalu a určení hlavního organizátora.
+- Založení festivalu a pozvání hlavního organizátora (viz 4.1).
+- Přidávání a odebírání dalších správců platformy.
 
 ## 6. Nefunkční požadavky
 
@@ -172,7 +214,7 @@ Pravidla:
 
 ### 6.2 Offline (v1.0)
 - Při otevření se program festivalu stáhne do zařízení.
-- Bez signálu lze prohlížet program, filtrovat a vidět svůj rozvrh.
+- Bez signálu lze prohlížet program, filtrovat, vidět svůj rozvrh a praktické informace.
 - Po obnovení připojení se načtou změny.
 - Úpravy osobního programu offline: v1.1.
 
@@ -187,6 +229,8 @@ Pravidla:
 ### 6.5 Soukromí
 - GDPR: uživatel může smazat svůj účet a data.
 - Ukládáme minimum osobních údajů (jméno, e-mail, výběr lekcí).
+- **Provozovatel a správce osobních údajů:** Filip Dvořák (fyzická osoba).
+- Před spuštěním: zásady ochrany osobních údajů a podmínky užívání.
 
 ## 7. Grafický design
 
@@ -237,6 +281,26 @@ Pravidla:
 - Pod hlavičkou záložky dnů.
 - Spodní menu: Program, Můj program, Učitelé, Více.
 
+### 7.6 Logo platformy Clave
+
+![Logo Clave](brand/clave-logo.svg)
+
+- **Motiv:** pět teček v rytmu **2-3 clave**, rozdělených do dvou jasně oddělených skupin (2 + 3) s pravidelnými rozestupy, aby se tečky ani v malé velikosti neslévaly.
+- **Tvar:** čtverec se zaoblenými rohy (radius 22 % strany), tečky ve vodorovné řadě uprostřed.
+- **Barvy:** podklad **salsa červená `#C8102E`**, tečky bílé `#FFFFFF`.
+- **Nápis:** „clave“ malými písmeny, vedle ikony, v barvě `#C8102E` (na tmavém pozadí bílý).
+- **Zdrojový soubor:** [`docs/brand/clave-logo.svg`](brand/clave-logo.svg).
+- **Použití:**
+  - ikona PWA a favicon samotné platformy, hlavní stránka platformy,
+  - střed QR kódů (viz níže),
+  - uvnitř festivalu jen decentně („Clave · <festival>“), případně jednobarevně šedé, aby nesoupeřilo s identitou festivalu.
+
+**Logo v QR kódu**
+- QR kódy se generují s nejvyšší úrovní oprav chyb (**H**).
+- Logo je uprostřed na bílém poli se zaoblenými rohy, pole zabírá max. ~30 % šířky kódu (~9 % plochy).
+- Kolem loga bílý okraj; logo musí zůstat čitelné i při velikosti kódu ~2 cm.
+- Každý vygenerovaný QR kód se před použitím ověří naskenováním.
+
 ## 8. Přihlašování
 
 - **Google** – hlavní způsob.
@@ -257,18 +321,22 @@ Pravidla:
 ## 10. Datový model (náčrt)
 
 - **User** – id, jméno, e-mail, jazyk
-- **TeacherProfile** – user_id, jméno, fotka, bio CZ/EN (globální)
+- **TeacherProfile** – user_id (volitelné, profil může existovat bez účtu), jméno, fotka, bio CZ/EN (globální)
 - **TeacherProfileRevision** – profile_id, autor, čas, předchozí obsah
-- **Festival** – id, slug, název, termín, stav, logo (široké, čtvercové), banner, barvy (1–5), písmo
+- **Festival** – id, slug, název, termín, časové pásmo, stav, logo (široké, čtvercové), banner, barvy (1–5), písmo
 - **FestivalMember** – festival_id, user_id, role (hlavní organizátor / organizátor / učitel)
 - **Day** – festival_id, datum
 - **TimeSlot** – day_id, začátek, konec
 - **Room** – festival_id, název, pořadí
 - **Style** – festival_id, název, barva
-- **Lesson** – festival_id, slot_id, room_id, style_id, název CZ/EN, level, popis CZ/EN, updated_at (unikátní slot_id + room_id)
-- **LessonTeacher** – lesson_id, user_id
+- **Lesson** – festival_id, start_slot_id, end_slot_id, room_id, style_id, název CZ/EN, level, popis CZ/EN, updated_at (sloty a místnost se nesmí překrývat s jinou lekcí)
+- **LessonTeacher** – lesson_id, teacher_profile_id
+- **InfoPage** – festival_id, pořadí, nadpis CZ/EN, obsah CZ/EN
+- **PlatformAdmin** – user_id
 - **Party** – festival_id, den, začátek, konec, místo, název, popis
 - **PersonalSelection** – user_id, lesson_id / party_id
+- **Invitation** – festival_id, e-mail, role, pozval, stav, expirace
+- **ChangeLog** – festival_id, autor, čas, entita, akce, změněná data
 
 ## 11. Roadmapa
 
@@ -277,11 +345,14 @@ Vše výše uvedené.
 
 ### v1.1
 - Kapacity lekcí / registrace.
-- Statistiky zájmu pro organizátory.
+- Statistiky zájmu pro organizátory a anonymní statistika návštěvnosti (bez cookies).
 - Export osobního programu (iCal, PDF).
 - Push notifikace o změnách.
 - Úpravy osobního programu offline.
 - Import vložením mřížky z tabulky (copy-paste), případně AI import přímo v aplikaci.
+- Žádost o založení festivalu formulářem.
+- Různé úrovně oprávnění organizátorů.
+- Přehodnocení zabezpečení přihlášení organizátorů.
 
 ## 12. Otevřené otázky
 
