@@ -1,6 +1,6 @@
 # PRD – Dance Festival App
 
-> Stav: **návrh v0.1** · Datum: 2026-10-07 · Autor: Filip Dvořák
+> Stav: **návrh v0.3** · Datum: 2026-10-07 · Autor: Filip Dvořák
 
 ## 1. Shrnutí
 
@@ -72,8 +72,14 @@ Pravidla:
 - Jméno, fotka, krátký popis.
 - Seznam lekcí učitele na daném festivalu.
 
+**Hlavní stránka platformy**
+- Seznam aktuálních a nadcházejících zveřejněných festivalů.
+- Přihlášený uživatel vidí nahoře festivaly, kde má osobní program.
+- Archiv minulých festivalů.
+
 **Mobilní zobrazení**
-- Mřížka musí být na telefonu použitelná (horizontální scroll přes místnosti, ukotvený sloupec s časy). Případně alternativní seznamové zobrazení – *otevřená otázka*.
+- Mřížka s horizontálním scrollem přes místnosti a ukotveným sloupcem s časy.
+- Přepínač na **seznamové zobrazení** (lekce pod sebou seřazené podle času).
 
 ### 5.2 Osobní program (přihlášený uživatel)
 
@@ -92,8 +98,12 @@ Pravidla:
 ### 5.4 Správa festivalu (organizátor)
 
 **Festival**
-- Název, URL slug, termín (dny), popis, logo.
-- Stav publikace (koncept / zveřejněno) – *otevřená otázka*.
+- Název, URL slug, termín (dny), popis.
+- Vizuální identita (logo, banner, barvy, písmo) – nastavuje hlavní organizátor, viz kap. 7.
+- Stav **koncept / zveřejněno / archiv**:
+  - Koncept: program vidí jen organizátoři festivalu.
+  - Zveřejněno: program je veřejný, změny se projeví okamžitě.
+  - Archiv: po skončení festivalu; program i osobní programy zůstávají veřejně ke čtení.
 
 **Časový rámec**
 - Pro každý den vlastní sada časových slotů (začátek–konec).
@@ -104,10 +114,11 @@ Pravidla:
 - Přidání, úprava, odebrání, pořadí (pořadí = pořadí sloupců v mřížce).
 
 **Styly**
-- Seznam stylů spravuje organizátor, každému přiřadí barvu.
+- Seznam stylů spravuje organizátor, každému přiřadí libovolnou barvu (RGB).
 
 **Lekce**
 - Den, slot, místnost, styl, název / co se učí, level, 1+ učitelů, volitelně popis.
+- V jednom slotu a místnosti smí být **jen jedna lekce** (hlídá formulář i import).
 - Úpravy i za běhu festivalu (spouští informování o změnách).
 
 **Párty**
@@ -116,7 +127,7 @@ Pravidla:
 **Učitelé**
 - Vyhledání existujícího učitele na platformě a přidání do festivalu.
 - Založení nového uživatele a povýšení na učitele.
-- Úprava medailonku učitele.
+- Úprava medailonku učitele. Změna se projeví na všech festivalech; učitel vidí historii změn (kdo, kdy) a může změnu vrátit.
 
 **Organizátoři** (hlavní organizátor)
 - Přidání / odebrání dalších organizátorů festivalu.
@@ -124,10 +135,15 @@ Pravidla:
 ### 5.4.1 Import programu
 
 **Import z Excelu / CSV**
-- Organizátor si stáhne šablonu (XLSX a CSV). Jeden řádek = jedna lekce / párty: typ, den, začátek, konec, místnost, styl, název, level, učitelé (oddělení čárkou), popis.
+- Organizátor si stáhne šablonu (XLSX a CSV). Jeden řádek = jedna lekce / párty: ID, typ, den, začátek, konec, místnost, styl, název (CZ/EN), level, učitelé (oddělení čárkou), popis (CZ/EN).
 - Po nahrání aplikace automaticky založí chybějící místnosti, styly, časové sloty a učitele. Učitele nejprve hledá mezi existujícími na platformě a nabídne shodu.
 - **Náhled před uložením:** tabulka s tím, co se vytvoří / změní, a zvýrazněné chyby (neplatný level, chybějící údaje, dvě lekce ve stejném slotu a místnosti, neznámý učitel…).
-- **Opakovaný import:** nahrání opravené verze aktualizuje existující program. Aplikace pozná, které lekce se změnily, a štítek „Změna“ (5.3) dostanou jen ty.
+- **Export:** aktuální program festivalu lze stáhnout ve formátu šablony, každá lekce má vyplněné `ID`.
+- **Opakovaný import (párování podle ID):** organizátor exportuje program, upraví ho a nahraje zpět.
+  - Řádek s ID = úprava existující lekce (zůstává uživatelům v osobním programu).
+  - Řádek bez ID = nová lekce.
+  - Lekce, jejíž ID v souboru chybí, se v náhledu nabídne ke smazání a organizátor ji potvrdí.
+  - Štítek „Změna“ (5.3) dostanou jen lekce, které se skutečně změnily.
 
 **Prompt pro AI**
 - U importu je připravený text promptu ke zkopírování. Organizátor ho vloží do své AI (ChatGPT, Claude, Gemini…) spolu se svým PDF / obrázkem / tabulkou programu a AI mu vrátí CSV ve formátu šablony.
@@ -136,7 +152,8 @@ Pravidla:
 - Aplikace sama žádné AI API nevolá → bez nákladů.
 
 **Kopie z minulého ročníku**
-- Nový festival lze založit jako kopii existujícího: místnosti, styly, časové sloty, učitelé, volitelně i lekce.
+- Organizátor smí kopírovat jen festivaly, kde je organizátorem. Nový festival zakládá správce platformy, organizátor do něj pak zkopíruje data.
+- Kopírují se: místnosti, styly, časové sloty, učitelé, volitelně i lekce.
 - Data se posunou na nový termín, organizátor pak jen upraví rozdíly.
 
 ### 5.5 Učitel
@@ -161,7 +178,7 @@ Pravidla:
 
 ### 6.3 Jazyky
 - Rozhraní česky a anglicky.
-- Obsah zadávaný organizátorem (názvy lekcí, popisy) – *otevřená otázka*.
+- Obsah zadávaný organizátorem (názvy lekcí, popisy): jeden jazyk povinně, druhý volitelně. Když překlad chybí, zobrazí se originál.
 
 ### 6.4 Výkon
 - Program je převážně ke čtení → cachování na CDN, aby aplikace zvládla 20 000 uživatelů denně v rámci free tierů.
@@ -171,13 +188,62 @@ Pravidla:
 - GDPR: uživatel může smazat svůj účet a data.
 - Ukládáme minimum osobních údajů (jméno, e-mail, výběr lekcí).
 
-## 7. Přihlašování
+## 7. Grafický design
+
+### 7.1 Princip
+- Aplikace má **jeden neutrální základní design**, který je na všech festivalech stejný (rozložení, ovládání, mřížka).
+- Festival ho „obléká“ do své vizuální identity: logo, banner, barvy, písmo.
+- Mobile-first, plochý čistý vzhled, podpora **světlého i tmavého režimu** (podle nastavení telefonu).
+
+### 7.2 Vizuální identita festivalu (hlavní organizátor)
+
+**Logo**
+- Dvě verze: **široké** (hlavička, úvodní stránka festivalu) a **čtvercové** (ikona PWA na ploše, favicon, splash screen).
+
+**Banner**
+- Úvodní obrázek / fotka na hlavní stránce festivalu.
+
+**Barevné schéma: 1–5 barev zadaných RGB (hex) kódem, každá má pevnou roli:**
+
+| # | Role | Kde se projeví | Povinná |
+|---|---|---|---|
+| 1 | Hlavní | Hlavička, vybraný den, tlačítka, aktivní položka menu | ano |
+| 2 | Doplňková | Akcenty, odkazy, podbarvení párty | ne |
+| 3 | Zvýrazňující | Štítek „Změna“, „chci jít“, „teď probíhá“ | ne |
+| 4 | Podklad | Barva pozadí stránky | ne |
+| 5 | Text | Barva písma | ne |
+
+- Chybějící barvy aplikace **dopočítá** z hlavní barvy (odstíny).
+- Pro tmavý režim se barvy festivalu automaticky upraví (zesvětlení akcentů, tmavý podklad).
+
+**Písmo**
+- Výběr z **5 předpřipravených písem** (s podporou české diakritiky).
+
+### 7.3 Pojistky čitelnosti
+- Barva textu na barevných plochách (bílá / tmavá) se volí **automaticky podle kontrastu**.
+- Nečitelná kombinace (pod WCAG AA) → varování organizátorovi a návrh upravené barvy.
+- Varování, když je barva festivalu téměř shodná s barvou některého stylu.
+- **Živý náhled** aplikace při nastavování identity.
+
+### 7.4 Mřížka programu
+- Podklad mřížky zůstává **neutrální** (bílý / tmavý); barvy festivalu do ní nezasahují.
+- Lekce: jemně podbarvená barvou stylu, barevná tečka + název stylu, název lekce, učitel(é), kolečka levelu, srdíčko „chci jít“.
+- Barvy stylů volí organizátor volně; pro tmavý režim se automaticky upraví.
+- Prázdný slot = přerušovaný rámeček.
+- Párty pod mřížkou jako samostatný řádek podbarvený doplňkovou barvou.
+
+### 7.5 Navigace
+- Hlavička: logo, název a termín festivalu, filtry.
+- Pod hlavičkou záložky dnů.
+- Spodní menu: Program, Můj program, Učitelé, Více.
+
+## 8. Přihlašování
 
 - **Google** – hlavní způsob.
 - **Magic link** (odkaz do e-mailu) – záložní, pod „Jiný způsob přihlášení“.
 - Apple Sign-In: zatím ne (99 $/rok).
 
-## 8. Technologie
+## 9. Technologie
 
 | Vrstva | Volba |
 |---|---|
@@ -188,22 +254,23 @@ Pravidla:
 
 **Náklady:** vývoj a menší festival 0 Kč. Velký festival možná 25–45 $ za měsíc konání (Supabase Pro, placené e-maily). Volitelně doména ~200–300 Kč/rok.
 
-## 9. Datový model (náčrt)
+## 10. Datový model (náčrt)
 
 - **User** – id, jméno, e-mail, jazyk
-- **TeacherProfile** – user_id, jméno, fotka, bio (globální)
-- **Festival** – id, slug, název, termín, stav
+- **TeacherProfile** – user_id, jméno, fotka, bio CZ/EN (globální)
+- **TeacherProfileRevision** – profile_id, autor, čas, předchozí obsah
+- **Festival** – id, slug, název, termín, stav, logo (široké, čtvercové), banner, barvy (1–5), písmo
 - **FestivalMember** – festival_id, user_id, role (hlavní organizátor / organizátor / učitel)
 - **Day** – festival_id, datum
 - **TimeSlot** – day_id, začátek, konec
 - **Room** – festival_id, název, pořadí
 - **Style** – festival_id, název, barva
-- **Lesson** – festival_id, slot_id, room_id, style_id, název, level, popis, updated_at
+- **Lesson** – festival_id, slot_id, room_id, style_id, název CZ/EN, level, popis CZ/EN, updated_at (unikátní slot_id + room_id)
 - **LessonTeacher** – lesson_id, user_id
 - **Party** – festival_id, den, začátek, konec, místo, název, popis
 - **PersonalSelection** – user_id, lesson_id / party_id
 
-## 10. Roadmapa
+## 11. Roadmapa
 
 ### v1.0
 Vše výše uvedené.
@@ -216,14 +283,6 @@ Vše výše uvedené.
 - Úpravy osobního programu offline.
 - Import vložením mřížky z tabulky (copy-paste), případně AI import přímo v aplikaci.
 
-## 11. Otevřené otázky
+## 12. Otevřené otázky
 
-1. Mobilní zobrazení mřížky – stačí horizontální scroll, nebo i seznamové zobrazení?
-2. Má festival stav koncept / zveřejněno (organizátor připravuje program skrytě)?
-3. Obsah lekcí – zadává organizátor dvojjazyčně (CZ + EN), nebo jen v jednom jazyce?
-4. Mohou být v jednom slotu a místnosti dvě lekce současně? (Předpoklad: ne.)
-5. Úprava medailonku organizátorem se projeví na všech festivalech – je to v pořádku?
-6. Co se zobrazí na hlavní stránce platformy – seznam festivalů, nebo nic?
-7. Archivace minulých festivalů – zůstávají veřejně dostupné?
-8. Kopie ročníku – smí organizátor kopírovat jen své festivaly, nebo i cizí?
-9. Opakovaný import – podle čeho párovat lekce mezi verzemi (den + slot + místnost, nebo ID lekce ve sloupci šablony)?
+Zatím žádné.
