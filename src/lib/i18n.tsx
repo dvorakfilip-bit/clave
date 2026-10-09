@@ -55,6 +55,7 @@ const dict = {
     changesSince: "Od tvé poslední návštěvy se změnilo:",
     understood: "Rozumím",
     offlineSave: "Výběr se nepodařilo uložit. Zkontroluj připojení k internetu.",
+    manageFestival: "Spravovat festival",
   },
   en: {
     festivals: "Festivals",
@@ -107,6 +108,7 @@ const dict = {
     changesSince: "Changed since your last visit:",
     understood: "Got it",
     offlineSave: "Couldn't save your selection. Check your internet connection.",
+    manageFestival: "Manage festival",
   },
 } as const;
 

@@ -10,12 +10,22 @@ import { useProgram } from "./ProgramContext";
 export function MorePage() {
   const { program } = useProgram();
   const { t, pick, locale, setLocale } = useI18n();
-  const { user, signOut, deleteAccount, error } = usePersonal();
+  const { user, isOrganizer, signOut, deleteAccount, error } = usePersonal();
   const pathname = usePathname();
   const description = pick(program.festival.descriptionCs, program.festival.descriptionEn);
 
   return (
     <div className="space-y-5 px-4 py-3">
+      {isOrganizer && (
+        <Link
+          href={`/admin/${program.festival.slug}`}
+          className="flex items-center justify-between rounded-xl bg-brand px-4 py-3 text-sm font-semibold text-on-brand"
+        >
+          {t("manageFestival")}
+          <span aria-hidden="true">→</span>
+        </Link>
+      )}
+
       {description && <p className="text-sm leading-relaxed">{description}</p>}
 
       {program.infoPages.length > 0 && (

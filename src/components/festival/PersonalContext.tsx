@@ -16,6 +16,8 @@ export interface ItemRef {
 interface PersonalState {
   /** undefined = ještě se zjišťuje, null = nepřihlášen */
   user: User | null | undefined;
+  /** Přihlášený uživatel je organizátorem tohoto festivalu (nebo správcem platformy). */
+  isOrganizer: boolean;
   isSelected: (ref: ItemRef) => boolean;
   toggle: (ref: ItemRef) => void;
   /** Vybrané položky, se kterými se daná položka časově překrývá. */
@@ -48,6 +50,7 @@ export function PersonalProvider({ children }: { children: React.ReactNode }) {
   const [selection, setSelection] = useState<Map<string, string>>(new Map()); // klíč → created_at
   const [lastSeen, setLastSeen] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isOrganizer, setIsOrganizer] = useState(false);
 
   useEffect(() => {
     if (!supabaseConfigured) return;
@@ -61,16 +64,19 @@ export function PersonalProvider({ children }: { children: React.ReactNode }) {
     if (!user) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- odhlášení vyprázdní výběr
       setSelection(new Map());
+      setIsOrganizer(false);
       return;
     }
     const db = createBrowserSupabase();
     let cancelled = false;
     (async () => {
-      const [{ data: rows }, { data: visit }] = await Promise.all([
+      const [{ data: rows }, { data: visit }, { data: organizer }] = await Promise.all([
         db.rpc("my_selections", { fid: festivalId }),
         db.from("festival_visits").select("last_seen_at").eq("festival_id", festivalId).maybeSingle(),
+        db.rpc("is_organizer", { fid: festivalId }),
       ]);
       if (cancelled) return;
+      setIsOrganizer(Boolean(organizer));
       const map = new Map<string, string>();
       for (const r of (rows ?? []) as { lesson_id: string | null; party_id: string | null; created_at: string }[]) {
         map.set(r.lesson_id ? `lesson:${r.lesson_id}` : `party:${r.party_id}`, r.created_at);
@@ -141,6 +147,7 @@ export function PersonalProvider({ children }: { children: React.ReactNode }) {
     const changedKeys = new Set(changed.map(key));
     return {
       user,
+      isOrganizer,
       selected,
       isSelected: (ref) => selection.has(key(ref)),
       conflictsOf,
@@ -198,7 +205,7 @@ export function PersonalProvider({ children }: { children: React.ReactNode }) {
         return true;
       },
     };
-  }, [user, selected, selection, conflictsOf, changed, error, festivalId, t, pick, program]);
+  }, [user, isOrganizer, selected, selection, conflictsOf, changed, error, festivalId, t, pick, program]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
