@@ -1,6 +1,6 @@
 # PRD – Clave
 
-> Stav: **návrh v0.6** · Datum: 2026-10-07 · Autor: Filip Dvořák
+> Stav: **návrh v0.7** · Datum: 2026-10-09 · Autor: Filip Dvořák
 
 ## 1. Shrnutí
 
@@ -83,6 +83,7 @@ Pravidla:
 **Level**
 - Škála 0–3 kolečka v krocích po 0,5 (tj. 7 hodnot: 0; 0,5; 1; … 3).
 - Zobrazení: 3 kolečka, prázdná / poloplná / plná. 0 = nejlehčí, 3 = nejpokročilejší.
+- Lekce „pro všechny úrovně“ má level 0 (3 prázdná kolečka) – nejlehčí úroveň a „pro všechny“ se nerozlišují.
 
 **Filtry**
 - Styl, místnost, učitel, level, den.
@@ -90,6 +91,12 @@ Pravidla:
 
 **Detail lekce**
 - Všechny údaje lekce + odkazy na medailonky učitelů.
+
+**Zrušená lekce**
+- Zůstává v programu **přeškrtnutá se štítkem „Zrušeno“** (nemizí).
+
+**Sdílení**
+- Každá lekce i medailonek učitele má vlastní sdílitelný odkaz (např. do WhatsAppu); otevře přímo detail.
 
 **Medailonek učitele**
 - Jméno, fotka, krátký popis.
@@ -130,7 +137,7 @@ Pravidla:
 - Stav **koncept / zveřejněno / archiv**:
   - Koncept: program vidí jen organizátoři festivalu.
   - Zveřejněno: program je veřejný, změny se projeví okamžitě.
-  - Archiv: po skončení festivalu; program i osobní programy zůstávají veřejně ke čtení.
+  - Archiv: po skončení festivalu; program zůstává veřejně ke čtení; osobní program zůstává ke čtení jen svému majiteli.
 
 **Časový rámec**
 - Pro každý den vlastní sada časových slotů (začátek–konec).
@@ -139,6 +146,7 @@ Pravidla:
 
 **Místnosti**
 - Přidání, úprava, odebrání, pořadí (pořadí = pořadí sloupců v mřížce).
+- Místnost ani časový slot, ve kterém jsou lekce, **nelze smazat**, dokud se lekce nepřesunou nebo nesmažou.
 
 **Styly**
 - Seznam stylů spravuje organizátor, každému přiřadí libovolnou barvu (RGB).
@@ -147,9 +155,11 @@ Pravidla:
 - Den, počáteční a koncový slot (lekce může trvat více slotů), místnost, styl, název / co se učí, level, 1+ učitelů, volitelně popis.
 - V jednom slotu a místnosti smí být **jen jedna lekce** (hlídá formulář i import).
 - Úpravy i za běhu festivalu (spouští informování o změnách).
+- Lekci lze **zrušit** (zůstane v programu přeškrtnutá, viz 5.1) nebo smazat.
+- **Varování:** když učitel učí ve stejném čase ve dvou místnostech (uložení lze potvrdit).
 
 **Párty**
-- Den, čas (volný, mimo sloty, může přesahovat přes půlnoc), místo, název, popis.
+- Den, čas (volný, mimo sloty, může přesahovat přes půlnoc), místo (místnost festivalu **nebo** vlastní text, např. „Beach bar“), název, popis.
 
 **Učitelé**
 - Vyhledání existujícího učitele na platformě (podle jména) a přidání do festivalu.
@@ -231,6 +241,14 @@ Pravidla:
 - Ukládáme minimum osobních údajů (jméno, e-mail, výběr lekcí).
 - **Provozovatel a správce osobních údajů:** Filip Dvořák (fyzická osoba).
 - Před spuštěním: zásady ochrany osobních údajů a podmínky užívání.
+
+### 6.6 Provoz a zálohy
+- **Denní záloha databáze** každé ráno v **6:00** (čas Praha) pomocí **GitHub Actions**.
+- Zálohy se ukládají do samostatného **soukromého repozitáře `clave-backups`** – obsahují osobní údaje, nesmí být ve veřejném repozitáři.
+- Uchovává se **posledních 30 záloh**, starší se automaticky mažou.
+- Denní připojení zálohy k databázi zároveň brání **uspání Supabase** (free tier se uspí po týdnu bez aktivity) – archiv minulých festivalů tak zůstává dostupný i mezi festivaly.
+- Úloha musí řešit, že GitHub vypíná naplánované workflow po 60 dnech bez aktivity v repozitáři (např. automatickým commitem zálohy).
+- Čas spuštění v GitHub Actions je v UTC (přepočet letní / zimní čas), spuštění se může zpozdit o několik minut.
 
 ## 7. Grafický design
 
@@ -315,6 +333,8 @@ Pravidla:
 | Backend / DB | Supabase (Postgres, Auth, Storage, Realtime) |
 | Hosting | Vercel (Hobby) |
 | E-maily | Resend (nebo jiná SMTP služba) pro magic link |
+| Automatizace | GitHub Actions (denní záloha) |
+| Verzování | Git, GitHub (`clave` veřejný, `clave-backups` soukromý) |
 
 **Náklady:** vývoj a menší festival 0 Kč. Velký festival možná 25–45 $ za měsíc konání (Supabase Pro, placené e-maily). Volitelně doména ~200–300 Kč/rok.
 
@@ -329,11 +349,11 @@ Pravidla:
 - **TimeSlot** – day_id, začátek, konec
 - **Room** – festival_id, název, pořadí
 - **Style** – festival_id, název, barva
-- **Lesson** – festival_id, start_slot_id, end_slot_id, room_id, style_id, název CZ/EN, level, popis CZ/EN, updated_at (sloty a místnost se nesmí překrývat s jinou lekcí)
+- **Lesson** – festival_id, start_slot_id, end_slot_id, room_id, style_id, název CZ/EN, level, popis CZ/EN, zrušeno (ano/ne), updated_at (sloty a místnost se nesmí překrývat s jinou lekcí)
 - **LessonTeacher** – lesson_id, teacher_profile_id
 - **InfoPage** – festival_id, pořadí, nadpis CZ/EN, obsah CZ/EN
 - **PlatformAdmin** – user_id
-- **Party** – festival_id, den, začátek, konec, místo, název, popis
+- **Party** – festival_id, den, začátek, konec, room_id nebo vlastní místo, název, popis
 - **PersonalSelection** – user_id, lesson_id / party_id
 - **Invitation** – festival_id, e-mail, role, pozval, stav, expirace
 - **ChangeLog** – festival_id, autor, čas, entita, akce, změněná data
@@ -353,6 +373,9 @@ Vše výše uvedené.
 - Žádost o založení festivalu formulářem.
 - Různé úrovně oprávnění organizátorů.
 - Přehodnocení zabezpečení přihlášení organizátorů.
+
+### Později
+- Přístupnost (kontrasty, čtečky obrazovky, zvětšitelné písmo) nad rámec automatické kontroly kontrastu.
 
 ## 12. Otevřené otázky
 
