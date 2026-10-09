@@ -56,6 +56,7 @@ const dict = {
     understood: "Rozumím",
     offlineSave: "Výběr se nepodařilo uložit. Zkontroluj připojení k internetu.",
     manageFestival: "Spravovat festival",
+    teacherProfile: "Můj profil učitele",
   },
   en: {
     festivals: "Festivals",
@@ -109,6 +110,7 @@ const dict = {
     understood: "Got it",
     offlineSave: "Couldn't save your selection. Check your internet connection.",
     manageFestival: "Manage festival",
+    teacherProfile: "My teacher profile",
   },
 } as const;
 

@@ -37,7 +37,7 @@ export async function loadProgram(db: SupabaseClient, slug: string): Promise<Fes
     db.from("lessons").select("*, lesson_teachers(teacher_profile_id)").eq("festival_id", id),
     db.from("parties").select("*").eq("festival_id", id).order("starts_at"),
     db.from("info_pages").select("*").eq("festival_id", id).order("position"),
-    db.from("festival_teachers").select("teacher_profiles(*)").eq("festival_id", id),
+    db.from("festival_teachers").select("bio_cs, bio_en, photo_url, teacher_profiles(*)").eq("festival_id", id),
   ]);
 
   const firstError = [days, slots, rooms, styles, lessons, parties, infoPages, festivalTeachers].find((r) => r.error);
@@ -64,10 +64,19 @@ export async function loadProgram(db: SupabaseClient, slug: string): Promise<Fes
     slots: slots.data!.map((s) => ({ id: s.id, dayId: s.day_id, startsAt: hhmm(s.starts_at)!, endsAt: hhmm(s.ends_at)! })),
     rooms: rooms.data!.map((r) => ({ id: r.id, name: r.name, position: r.position })),
     styles: styles.data!.map((s) => ({ id: s.id, name: s.name, color: s.color })),
+    // Vlastní verze medailonku pro festival má přednost před globální (po jednotlivých polích).
     teachers: festivalTeachers
-      .data!.map((ft) => ft.teacher_profiles as unknown as Record<string, string | null>)
-      .filter(Boolean)
-      .map((t) => ({ id: t.id!, name: t.name!, photoUrl: t.photo_url, bioCs: t.bio_cs, bioEn: t.bio_en }))
+      .data!.filter((ft) => ft.teacher_profiles)
+      .map((ft) => {
+        const t = ft.teacher_profiles as unknown as Record<string, string | null>;
+        return {
+          id: t.id!,
+          name: t.name!,
+          photoUrl: ft.photo_url ?? t.photo_url,
+          bioCs: ft.bio_cs ?? t.bio_cs,
+          bioEn: ft.bio_en ?? t.bio_en,
+        };
+      })
       .sort((a, b) => a.name.localeCompare(b.name)),
     lessons: lessons.data!.map((l) => ({
       id: l.id,

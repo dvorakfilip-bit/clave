@@ -476,6 +476,28 @@ export async function updateTeacherProfile(
   });
 }
 
+/** Vlastní verze medailonku jen pro tento festival – organizátor ji může upravit vždy. */
+export async function updateFestivalTeacherBio(
+  slug: string,
+  teacherId: string,
+  input: { bioCs: string; bioEn: string; photoUrl: string },
+): Promise<ActionResult> {
+  return withFestival(slug, async ({ db, festivalId, log }) => {
+    if (clean(input.photoUrl) && !input.photoUrl.trim().startsWith("https://")) return fail("Odkaz na fotku musí začínat https://.");
+    const { data, error } = await db
+      .from("festival_teachers")
+      .update({ bio_cs: clean(input.bioCs), bio_en: clean(input.bioEn), photo_url: clean(input.photoUrl) })
+      .eq("festival_id", festivalId)
+      .eq("teacher_profile_id", teacherId)
+      .select("teacher_profiles(name)")
+      .single();
+    if (error) return fail(dbError(error));
+    const name = (data.teacher_profiles as unknown as { name: string } | null)?.name ?? "";
+    await log("teacher", "update", teacherId, `${name} – medailonek pro festival`);
+    return { ok: true };
+  });
+}
+
 /**
  * Propojí učitele s účtem: existující účet (přesný e-mail) se povýší hned,
  * jinak vznikne pozvánka, která se přijme po prvním přihlášení (PRD 4).

@@ -8,6 +8,7 @@ import {
   removeTeacherFromFestival,
   revokeInvitation,
   searchTeachers,
+  updateFestivalTeacherBio,
   updateTeacherProfile,
 } from "@/app/admin/actions";
 import { TeacherAvatar } from "@/components/festival/TeacherAvatar";
@@ -16,13 +17,20 @@ import { csCount } from "@/lib/plural";
 import type { FestivalProgram, Teacher } from "@/lib/types";
 import { Button, Card, ErrorText, Field, inputCls, Modal, useAction } from "./ui";
 
+export interface TeacherBios {
+  global: { name: string; photoUrl: string; bioCs: string; bioEn: string };
+  festival: { photoUrl: string; bioCs: string; bioEn: string };
+}
+
 export function TeachersEditor({
   program,
+  bios,
   linkedIds,
   invitations,
   lastEdit,
 }: {
   program: FestivalProgram;
+  bios: Record<string, TeacherBios>;
   linkedIds: string[];
   invitations: Invitation[];
   lastEdit: Record<string, string>;
@@ -52,13 +60,7 @@ export function TeachersEditor({
                   </p>
                 </div>
                 <div className="flex gap-1">
-                  <Button
-                    onClick={() => setEditing(t)}
-                    disabled={linkedIds.includes(t.id)}
-                    title={linkedIds.includes(t.id) ? "Učitel má vlastní účet – medailonek si upravuje sám" : undefined}
-                  >
-                    Medailonek
-                  </Button>
+                  <Button onClick={() => setEditing(t)}>Medailonek</Button>
                   {!linkedIds.includes(t.id) &&
                     (invitation ? (
                       <Button variant="ghost" disabled={pending} onClick={() => run(() => revokeInvitation(slug, invitation.id))}>
@@ -89,7 +91,9 @@ export function TeachersEditor({
         <CreateNew slug={slug} />
       </div>
 
-      {editing && <ProfileModal slug={slug} teacher={editing} onClose={() => setEditing(null)} />}
+      {editing && bios[editing.id] && (
+        <ProfileModal slug={slug} teacher={editing} bios={bios[editing.id]} linked={linkedIds.includes(editing.id)} onClose={() => setEditing(null)} />
+      )}
       {inviting && <InviteModal slug={slug} teacher={inviting} onClose={() => setInviting(null)} />}
     </div>
   );
@@ -152,39 +156,88 @@ function CreateNew({ slug }: { slug: string }) {
   );
 }
 
-function ProfileModal({ slug, teacher, onClose }: { slug: string; teacher: Teacher; onClose: () => void }) {
-  const { run, pending, error } = useAction();
-  const [f, setF] = useState({ name: teacher.name, bioCs: teacher.bioCs ?? "", bioEn: teacher.bioEn ?? "", photoUrl: teacher.photoUrl ?? "" });
+function ProfileModal({
+  slug,
+  teacher,
+  bios,
+  linked,
+  onClose,
+}: {
+  slug: string;
+  teacher: Teacher;
+  bios: TeacherBios;
+  linked: boolean;
+  onClose: () => void;
+}) {
+  const festivalAction = useAction();
+  const globalAction = useAction();
+  const [fest, setFest] = useState(bios.festival);
+  const [glob, setGlob] = useState(bios.global);
+
   return (
     <Modal title={`Medailonek – ${teacher.name}`} onClose={onClose}>
       <form
         className="space-y-3"
         onSubmit={(e) => {
           e.preventDefault();
-          run(() => updateTeacherProfile(slug, teacher.id, f), onClose);
+          festivalAction.run(() => updateFestivalTeacherBio(slug, teacher.id, fest), onClose);
         }}
       >
-        <p className="rounded-lg bg-accent-soft px-3 py-2 text-xs">
-          Medailonek je společný pro všechny festivaly. Změna se projeví všude a učitel uvidí, kdo ho upravil. Jakmile si učitel založí
-          účet, upravuje si medailonek už jen sám.
-        </p>
-        <Field label="Jméno">
-          <input className={inputCls} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} required />
-        </Field>
-        <Field label="Fotka (URL)" hint="Odkaz musí začínat https://. Nahrávání fotek přidáme v další etapě.">
-          <input className={inputCls} value={f.photoUrl} onChange={(e) => setF({ ...f, photoUrl: e.target.value })} placeholder="https://…" />
+        <h3 className="font-semibold">Pro tento festival</h3>
+        <p className="text-xs text-muted">Zobrazí se jen na tomto festivalu. Prázdná pole převezmou globální medailonek.</p>
+        <Field label="Fotka (URL)" hint="Odkaz musí začínat https://.">
+          <input
+            className={inputCls}
+            value={fest.photoUrl}
+            onChange={(e) => setFest({ ...fest, photoUrl: e.target.value })}
+            placeholder={glob.photoUrl || "https://…"}
+          />
         </Field>
         <Field label="Popis (česky)">
-          <textarea className={inputCls} rows={4} value={f.bioCs} onChange={(e) => setF({ ...f, bioCs: e.target.value })} />
+          <textarea className={inputCls} rows={3} value={fest.bioCs} onChange={(e) => setFest({ ...fest, bioCs: e.target.value })} placeholder={glob.bioCs} />
         </Field>
         <Field label="Popis (anglicky)">
-          <textarea className={inputCls} rows={4} value={f.bioEn} onChange={(e) => setF({ ...f, bioEn: e.target.value })} />
+          <textarea className={inputCls} rows={3} value={fest.bioEn} onChange={(e) => setFest({ ...fest, bioEn: e.target.value })} placeholder={glob.bioEn} />
         </Field>
-        <ErrorText error={error} />
-        <Button variant="primary" disabled={pending}>
-          Uložit
+        <ErrorText error={festivalAction.error} />
+        <Button variant="primary" disabled={festivalAction.pending}>
+          Uložit pro tento festival
         </Button>
       </form>
+
+      <hr className="my-5 border-line" />
+
+      {linked ? (
+        <div className="space-y-1 text-sm">
+          <h3 className="font-semibold">Globální medailonek</h3>
+          <p className="text-muted">Učitel má vlastní účet a globální medailonek si upravuje sám.</p>
+        </div>
+      ) : (
+        <form
+          className="space-y-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            globalAction.run(() => updateTeacherProfile(slug, teacher.id, glob), onClose);
+          }}
+        >
+          <h3 className="font-semibold">Globální medailonek</h3>
+          <p className="text-xs text-muted">Platí na všech festivalech, kde vlastní verze chybí. Jakmile si učitel založí účet, upravuje si ho už jen sám.</p>
+          <Field label="Jméno">
+            <input className={inputCls} value={glob.name} onChange={(e) => setGlob({ ...glob, name: e.target.value })} required />
+          </Field>
+          <Field label="Fotka (URL)" hint="Odkaz musí začínat https://.">
+            <input className={inputCls} value={glob.photoUrl} onChange={(e) => setGlob({ ...glob, photoUrl: e.target.value })} placeholder="https://…" />
+          </Field>
+          <Field label="Popis (česky)">
+            <textarea className={inputCls} rows={3} value={glob.bioCs} onChange={(e) => setGlob({ ...glob, bioCs: e.target.value })} />
+          </Field>
+          <Field label="Popis (anglicky)">
+            <textarea className={inputCls} rows={3} value={glob.bioEn} onChange={(e) => setGlob({ ...glob, bioEn: e.target.value })} />
+          </Field>
+          <ErrorText error={globalAction.error} />
+          <Button disabled={globalAction.pending}>Uložit globální medailonek</Button>
+        </form>
+      )}
     </Modal>
   );
 }

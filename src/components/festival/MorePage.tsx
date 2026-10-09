@@ -10,7 +10,7 @@ import { useProgram } from "./ProgramContext";
 export function MorePage() {
   const { program } = useProgram();
   const { t, pick, locale, setLocale } = useI18n();
-  const { user, isOrganizer, signOut, deleteAccount, error } = usePersonal();
+  const { user, isOrganizer, isTeacher, signOut, deleteAccount, error } = usePersonal();
   const pathname = usePathname();
   const description = pick(program.festival.descriptionCs, program.festival.descriptionEn);
 
@@ -67,6 +67,11 @@ export function MorePage() {
             </p>
             {error && <p className="rounded-lg bg-accent-soft px-3 py-2">{error}</p>}
             <div className="flex flex-wrap gap-2">
+              {isTeacher && (
+                <Link href="/ucet" className="rounded-lg border border-line px-3 py-1.5">
+                  {t("teacherProfile")}
+                </Link>
+              )}
               <button onClick={signOut} className="rounded-lg border border-line px-3 py-1.5">
                 {t("signOut")}
               </button>

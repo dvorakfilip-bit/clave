@@ -1,6 +1,6 @@
 # PRD – Clave
 
-> Stav: **návrh v0.7** · Datum: 2026-10-09 · Autor: Filip Dvořák
+> Stav: **návrh v0.8** · Datum: 2026-10-09 · Autor: Filip Dvořák
 
 ## 1. Shrnutí
 
@@ -50,7 +50,10 @@ Pravidla:
 - **Vyhledávání účtů:** běžné uživatele lze najít jen podle **přesného e-mailu** (ochrana soukromí); učitele (veřejné profily) i podle jména.
 - **Smazání účtu učitele:** u lekcí (i minulých festivalů) zůstane jen jméno, medailonek a fotka se smažou.
 - Správců platformy může být víc; prvním je provozovatel, další přidává stávající správce platformy.
-- Organizátor může upravit medailonek učitele (např. když ho učitel nevyplní).
+- **Medailonek učitele:**
+  - Globální medailonek spravuje učitel s vlastním účtem sám; dokud účet nemá, upravují ho organizátoři festivalů, kde učí.
+  - Organizátor může pro **svůj festival** napsat vlastní verzi (popis CZ/EN, fotka). Ta má na jeho festivalu přednost, prázdná pole převezmou globální medailonek.
+  - Důvod: medailonek je společný pro všechny festivaly – cizí organizátor ho nesmí přepsat.
 - Festival může mít **více hlavních organizátorů**; hlavní organizátor může roli předat nebo udělit dalšímu.
 - Organizátoři mají v v1.0 stejná práva (jen dvě úrovně: hlavní organizátor / organizátor). Jemnější úrovně oprávnění: v1.1.
 
@@ -165,7 +168,8 @@ Pravidla:
 - Vyhledání existujícího učitele na platformě (podle jména) a přidání do festivalu.
 - Pozvání nového učitele e-mailem, nebo povýšení existujícího účtu (hledání podle přesného e-mailu).
 - Přidání učitele bez účtu (jen jméno + medailonek), pozvánku lze poslat i později.
-- Úprava medailonku učitele. Změna se projeví na všech festivalech; učitel vidí historii změn (kdo, kdy) a může změnu vrátit.
+- Vlastní verze medailonku pro tento festival (vždy).
+- Úprava globálního medailonku jen u učitele bez účtu; učitel vidí historii změn a může změnu vrátit.
 
 **Organizátoři** (hlavní organizátor)
 - Pozvání e-mailem / povýšení stávajícího účtu (viz 4.1).
@@ -209,7 +213,7 @@ Pravidla:
 
 ### 5.5 Učitel
 
-- Úprava vlastního medailonku (jméno, fotka, popis).
+- Úprava vlastního globálního medailonku (jméno, fotka, popis) na stránce „Můj profil učitele“, historie změn s možností vrátit.
 - Přehled svých lekcí na festivalech.
 
 ### 5.6 Správce platformy
@@ -350,6 +354,7 @@ Pravidla:
 - **Room** – festival_id, název, pořadí
 - **Style** – festival_id, název, barva
 - **Lesson** – festival_id, start_slot_id, end_slot_id, room_id, style_id, název CZ/EN, level, popis CZ/EN, zrušeno (ano/ne), updated_at (sloty a místnost se nesmí překrývat s jinou lekcí)
+- **FestivalTeacher** – festival_id, teacher_profile_id, vlastní popis CZ/EN a fotka pro festival
 - **LessonTeacher** – lesson_id, teacher_profile_id
 - **InfoPage** – festival_id, pořadí, nadpis CZ/EN, obsah CZ/EN
 - **PlatformAdmin** – user_id

@@ -18,6 +18,8 @@ interface PersonalState {
   user: User | null | undefined;
   /** Přihlášený uživatel je organizátorem tohoto festivalu (nebo správcem platformy). */
   isOrganizer: boolean;
+  /** Přihlášený uživatel má profil učitele (může si upravit medailonek). */
+  isTeacher: boolean;
   isSelected: (ref: ItemRef) => boolean;
   toggle: (ref: ItemRef) => void;
   /** Vybrané položky, se kterými se daná položka časově překrývá. */
@@ -51,6 +53,7 @@ export function PersonalProvider({ children }: { children: React.ReactNode }) {
   const [lastSeen, setLastSeen] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isOrganizer, setIsOrganizer] = useState(false);
+  const [isTeacher, setIsTeacher] = useState(false);
 
   useEffect(() => {
     if (!supabaseConfigured) return;
@@ -65,18 +68,21 @@ export function PersonalProvider({ children }: { children: React.ReactNode }) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- odhlášení vyprázdní výběr
       setSelection(new Map());
       setIsOrganizer(false);
+      setIsTeacher(false);
       return;
     }
     const db = createBrowserSupabase();
     let cancelled = false;
     (async () => {
-      const [{ data: rows }, { data: visit }, { data: organizer }] = await Promise.all([
+      const [{ data: rows }, { data: visit }, { data: organizer }, { data: teacher }] = await Promise.all([
         db.rpc("my_selections", { fid: festivalId }),
         db.from("festival_visits").select("last_seen_at").eq("festival_id", festivalId).maybeSingle(),
         db.rpc("is_organizer", { fid: festivalId }),
+        db.from("teacher_profiles").select("id").eq("user_id", user.id).maybeSingle(),
       ]);
       if (cancelled) return;
       setIsOrganizer(Boolean(organizer));
+      setIsTeacher(Boolean(teacher));
       const map = new Map<string, string>();
       for (const r of (rows ?? []) as { lesson_id: string | null; party_id: string | null; created_at: string }[]) {
         map.set(r.lesson_id ? `lesson:${r.lesson_id}` : `party:${r.party_id}`, r.created_at);
@@ -148,6 +154,7 @@ export function PersonalProvider({ children }: { children: React.ReactNode }) {
     return {
       user,
       isOrganizer,
+      isTeacher,
       selected,
       isSelected: (ref) => selection.has(key(ref)),
       conflictsOf,
@@ -205,7 +212,7 @@ export function PersonalProvider({ children }: { children: React.ReactNode }) {
         return true;
       },
     };
-  }, [user, isOrganizer, selected, selection, conflictsOf, changed, error, festivalId, t, pick, program]);
+  }, [user, isOrganizer, isTeacher, selected, selection, conflictsOf, changed, error, festivalId, t, pick, program]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
