@@ -11,7 +11,7 @@ import { TeacherAvatar } from "./TeacherAvatar";
 
 export function TeacherList() {
   const { program, base } = useProgram();
-  const { t } = useI18n();
+  const { t, count: plural } = useI18n();
   return (
     <div>
       <h1 className="px-4 py-3 text-lg font-semibold">{t("teachers")}</h1>
@@ -23,9 +23,7 @@ export function TeacherList() {
               <Link href={`${base}/ucitele/${teacher.id}`} className="flex items-center gap-3 p-3">
                 <TeacherAvatar teacher={teacher} />
                 <span className="flex-1 font-medium">{teacher.name}</span>
-                <span className="text-xs text-muted">
-                  {count} {t("lessonsOf").toLowerCase()}
-                </span>
+                <span className="text-xs text-muted">{plural(count, "lesson")}</span>
               </Link>
             </li>
           );

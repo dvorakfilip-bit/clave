@@ -76,10 +76,20 @@ const dict = {
 
 export type MessageKey = keyof (typeof dict)["cs"];
 
+// Tvary podle Intl.PluralRules: cs = one (1) / few (2–4) / many (desetinná) / other (0, 5+)
+const plurals = {
+  cs: { lesson: { one: "lekce", few: "lekce", many: "lekce", other: "lekcí" } },
+  en: { lesson: { one: "class", other: "classes" } },
+} as const;
+
+export type PluralKey = keyof (typeof plurals)["cs"];
+
 interface I18n {
   locale: Locale;
   setLocale: (l: Locale) => void;
   t: (key: MessageKey) => string;
+  /** Počet se správně vyskloňovaným slovem, např. „3 lekce“, „5 lekcí“. */
+  count: (n: number, key: PluralKey) => string;
   /** Vybere text v jazyce uživatele, chybí-li překlad, vrátí originál (PRD 6.3). */
   pick: (cs: string | null | undefined, en: string | null | undefined) => string;
 }
@@ -112,13 +122,21 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const t = useCallback((key: MessageKey) => dict[locale][key], [locale]);
+  const count = useCallback(
+    (n: number, key: PluralKey) => {
+      const forms: Partial<Record<Intl.LDMLPluralRule, string>> = plurals[locale][key];
+      const rule = new Intl.PluralRules(locale).select(n);
+      return `${n} ${forms[rule] ?? forms.other}`;
+    },
+    [locale],
+  );
   const pick = useCallback(
     (cs: string | null | undefined, en: string | null | undefined) =>
       (locale === "cs" ? (cs ?? en) : (en ?? cs)) ?? "",
     [locale],
   );
 
-  return <Ctx.Provider value={{ locale, setLocale, t, pick }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ locale, setLocale, t, count, pick }}>{children}</Ctx.Provider>;
 }
 
 export function useI18n() {
