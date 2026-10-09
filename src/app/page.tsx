@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Suspense } from "react";
 import { FestivalList } from "@/components/FestivalList";
 import { ClaveLogo } from "@/components/ClaveLogo";
@@ -18,6 +19,11 @@ export default function Home() {
       <Suspense fallback={null}>
         <Festivals />
       </Suspense>
+      <footer className="mt-12 border-t border-line pt-4 text-xs text-muted">
+        <Link href="/admin" className="underline">
+          Pro organizátory
+        </Link>
+      </footer>
     </main>
   );
 }
