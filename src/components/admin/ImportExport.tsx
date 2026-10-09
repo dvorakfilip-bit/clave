@@ -72,6 +72,8 @@ function ImportCard({ slug }: { slug: string }) {
   const [deleteIds, setDeleteIds] = useState<Set<string>>(new Set());
   const [done, setDone] = useState<string | null>(null);
   const [reading, startReading] = useTransition();
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
   const { run, pending, error } = useAction();
 
   function reset() {
@@ -82,6 +84,7 @@ function ImportCard({ slug }: { slug: string }) {
 
   function onFile(file: File | undefined) {
     if (!file) return;
+    setFileName(file.name);
     reset();
     setDone(null);
     setFileError(null);
@@ -115,16 +118,34 @@ function ImportCard({ slug }: { slug: string }) {
         Nahraj XLSX nebo CSV podle šablony. Nejdřív uvidíš náhled – nic se neuloží, dokud import nepotvrdíš. Chybějící místnosti, styly, časové sloty a
         učitele aplikace založí sama.
       </p>
-      <input
-        type="file"
-        accept=".xlsx,.csv,text/csv"
-        onChange={(e) => {
-          onFile(e.target.files?.[0]);
-          e.target.value = "";
+      <label
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragging(true);
         }}
-        className="text-sm"
-      />
-      {reading && <p className="mt-2 text-sm text-muted">Čtu soubor…</p>}
+        onDragLeave={() => setDragging(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragging(false);
+          onFile(e.dataTransfer.files?.[0]);
+        }}
+        className={`flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed px-4 py-6 text-center transition-colors ${
+          dragging ? "border-brand bg-accent-soft" : "border-line hover:border-brand"
+        }`}
+      >
+        <span className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-on-brand">Vybrat soubor</span>
+        <span className="text-xs text-muted">nebo ho sem přetáhni · XLSX nebo CSV</span>
+        {fileName && <span className="text-sm font-medium">{reading ? `Čtu ${fileName}…` : fileName}</span>}
+        <input
+          type="file"
+          accept=".xlsx,.csv,text/csv"
+          className="sr-only"
+          onChange={(e) => {
+            onFile(e.target.files?.[0]);
+            e.target.value = "";
+          }}
+        />
+      </label>
       <div className="mt-3 space-y-3">
         <ErrorText error={fileError ?? error} />
         {done && <p className="rounded-lg bg-accent-soft px-3 py-2 text-sm">Import dokončen: {done}.</p>}
