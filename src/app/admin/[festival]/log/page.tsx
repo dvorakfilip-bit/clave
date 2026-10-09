@@ -13,6 +13,7 @@ const ENTITY: Record<string, string> = {
   organizer: "organizátora",
   invitation: "pozvánku",
   info: "info stránku",
+  program: "program",
 };
 
 const ACTION: Record<string, string> = {

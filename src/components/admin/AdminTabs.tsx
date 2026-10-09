@@ -11,6 +11,7 @@ const TABS = [
   { href: "/ucitele", label: "Učitelé" },
   { href: "/organizatori", label: "Organizátoři" },
   { href: "/info", label: "Informace" },
+  { href: "/import", label: "Import a export" },
   { href: "/log", label: "Log změn" },
 ];
 
