@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+/* Neutrální základ platformy Clave (PRD 7.1); festival přepisuje proměnné svou identitou. */
+:root {
+  --brand: #c8102e;
+  --on-brand: #ffffff;
+  --accent: #e8707f;
+  --accent-soft: #fbe3e6;
+  --highlight: #c8102e;
+  --on-highlight: #ffffff;
+  --page: #f7f6f3;
+  --surface: #ffffff;
+  --ink: #1b1b1b;
+  --muted: #6b6b70;
+  --line: #e4e2dd;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --accent: #ef8a97;
+    --accent-soft: #3a2025;
+    --highlight: #e0425a;
+    --page: #121215;
+    --surface: #1c1c20;
+    --ink: #ececec;
+    --muted: #9a9aa2;
+    --line: #33333a;
+  }
+}
+
+@theme inline {
+  --color-brand: var(--brand);
+  --color-on-brand: var(--on-brand);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-highlight: var(--highlight);
+  --color-on-highlight: var(--on-highlight);
+  --color-page: var(--page);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+}
+
+body {
+  background: var(--page);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.lesson-card {
+  background: var(--style-bg);
+  color: var(--style-ink);
+}

@@ -1,0 +1,55 @@
+"use client";
+
+import Link from "next/link";
+import { ClaveLogo } from "@/components/ClaveLogo";
+import { useI18n } from "@/lib/i18n";
+import { useProgram } from "./ProgramContext";
+
+export function MorePage() {
+  const { program } = useProgram();
+  const { t, pick, locale, setLocale } = useI18n();
+  const description = pick(program.festival.descriptionCs, program.festival.descriptionEn);
+
+  return (
+    <div className="space-y-5 px-4 py-3">
+      {description && <p className="text-sm leading-relaxed">{description}</p>}
+
+      {program.infoPages.length > 0 && (
+        <section>
+          <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">{t("info")}</h2>
+          <div className="space-y-2">
+            {program.infoPages.map((p) => (
+              <details key={p.id} className="rounded-xl border border-line bg-surface p-3" open={program.infoPages.length === 1}>
+                <summary className="cursor-pointer font-medium">{pick(p.titleCs, p.titleEn)}</summary>
+                <p className="mt-2 whitespace-pre-line text-sm leading-relaxed">{pick(p.bodyCs, p.bodyEn)}</p>
+              </details>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <section>
+        <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">{t("language")}</h2>
+        <div className="inline-flex rounded-lg border border-line p-0.5 text-sm">
+          {(["cs", "en"] as const).map((l) => (
+            <button
+              key={l}
+              onClick={() => setLocale(l)}
+              aria-pressed={locale === l}
+              className={`rounded-md px-4 py-1 ${locale === l ? "bg-brand text-on-brand" : "text-muted"}`}
+            >
+              {l === "cs" ? "Čeština" : "English"}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <Link href="/" className="flex items-center gap-2 pt-4 text-xs text-muted">
+        <span className="text-muted">
+          <ClaveLogo size={18} mono />
+        </span>
+        Clave
+      </Link>
+    </div>
+  );
+}
