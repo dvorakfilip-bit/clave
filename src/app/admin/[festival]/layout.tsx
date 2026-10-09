@@ -2,7 +2,10 @@ import Link from "next/link";
 import { AdminTabs } from "@/components/admin/AdminTabs";
 import { loadAdminFestival } from "@/lib/admin/data";
 
-const STATUS = { draft: "Koncept", published: "Zveřejněno", archived: "Archiv" } as const;
+// Hlavička festivalu čte data přihlášeného organizátora – vstup do správy smí počkat na server.
+export const instant = false;
+
+const STATUS ={ draft: "Koncept", published: "Zveřejněno", archived: "Archiv" } as const;
 
 export default async function FestivalAdminLayout({ params, children }: LayoutProps<"/admin/[festival]">) {
   const { festival: slug } = await params;
