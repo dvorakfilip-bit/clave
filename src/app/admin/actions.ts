@@ -463,11 +463,14 @@ export async function updateTeacherProfile(
 ): Promise<ActionResult> {
   return withFestival(slug, async ({ db, log }) => {
     if (!input.name.trim()) return fail("Vyplň jméno učitele.");
-    const { error } = await db
+    if (clean(input.photoUrl) && !/^https:\/\//.test(input.photoUrl.trim())) return fail("Odkaz na fotku musí začínat https://.");
+    const { data: updated, error } = await db
       .from("teacher_profiles")
       .update({ name: input.name.trim(), bio_cs: clean(input.bioCs), bio_en: clean(input.bioEn), photo_url: clean(input.photoUrl) })
-      .eq("id", teacherId);
+      .eq("id", teacherId)
+      .select("id");
     if (error) return fail(dbError(error));
+    if (!updated?.length) return fail("Učitel má vlastní účet – medailonek si upravuje sám.");
     await log("teacher", "update", teacherId, input.name.trim());
     return { ok: true };
   });
@@ -478,20 +481,19 @@ export async function updateTeacherProfile(
  * jinak vznikne pozvánka, která se přijme po prvním přihlášení (PRD 4).
  */
 export async function inviteTeacher(slug: string, teacherId: string, email: string): Promise<ActionResult<"linked" | "invited">> {
-  return withFestival<"linked" | "invited">(slug, async ({ db, festivalId, userId, log }) => {
+  return withFestival<"linked" | "invited">(slug, async ({ db, festivalId, userId: me, log }) => {
     const address = email.trim().toLowerCase();
     if (!/^\S+@\S+\.\S+$/.test(address)) return fail("Zadej platný e-mail.");
-    const { data: found } = await db.rpc("find_user_by_email", { lookup: address });
-    const user = (found as { id: string }[] | null)?.[0];
-    if (user) {
-      const { error } = await db.rpc("link_teacher_account", { fid: festivalId, tid: teacherId, uid: user.id });
+    const { data: userId } = await db.rpc("find_user_by_email", { lookup: address, fid: festivalId });
+    if (userId) {
+      const { error } = await db.rpc("link_teacher_account", { fid: festivalId, tid: teacherId, uid: userId });
       if (error) return fail(dbError(error));
       await log("teacher", "update", teacherId, `propojen s účtem ${address}`);
       return { ok: true, data: "linked" };
     }
     const { error } = await db
       .from("invitations")
-      .insert({ festival_id: festivalId, email: address, role: "teacher", teacher_profile_id: teacherId, invited_by: userId });
+      .insert({ festival_id: festivalId, email: address, role: "teacher", teacher_profile_id: teacherId, invited_by: me });
     if (error) return fail(dbError(error));
     await log("invitation", "create", teacherId, `učitel ${address}`);
     return { ok: true, data: "invited" };
@@ -510,14 +512,13 @@ async function addOrganizer(
 ): Promise<ActionResult<"added" | "invited">> {
   const address = email.trim().toLowerCase();
   if (!/^\S+@\S+\.\S+$/.test(address)) return fail("Zadej platný e-mail.");
-  const { data: found } = await db.rpc("find_user_by_email", { lookup: address });
-  const user = (found as { id: string }[] | null)?.[0];
+  const { data: userId } = await db.rpc("find_user_by_email", { lookup: address, fid: festivalId });
   const {
     data: { user: me },
   } = await db.auth.getUser();
 
-  if (user) {
-    const { error } = await db.from("festival_members").upsert({ festival_id: festivalId, user_id: user.id, role });
+  if (userId) {
+    const { error } = await db.from("festival_members").upsert({ festival_id: festivalId, user_id: userId, role });
     if (error) return fail(dbError(error));
     return { ok: true, data: "added" };
   }
@@ -538,6 +539,8 @@ export async function inviteOrganizer(slug: string, email: string, role: "lead_o
 
 export async function setOrganizerRole(slug: string, userId: string, role: "lead_organizer" | "organizer"): Promise<ActionResult> {
   return withFestival(slug, async ({ db, festivalId, log }) => {
+    const { data: isLead } = await db.rpc("is_lead_organizer", { fid: festivalId });
+    if (!isLead) return fail("Organizátory spravuje jen hlavní organizátor.");
     const { error } = await db.from("festival_members").update({ role }).eq("festival_id", festivalId).eq("user_id", userId);
     if (error) return fail(dbError(error));
     await log("organizer", "update", userId, role === "lead_organizer" ? "povýšen na hlavního organizátora" : "změněn na organizátora");
@@ -547,6 +550,8 @@ export async function setOrganizerRole(slug: string, userId: string, role: "lead
 
 export async function removeOrganizer(slug: string, userId: string): Promise<ActionResult> {
   return withFestival(slug, async ({ db, festivalId, log }) => {
+    const { data: isLead } = await db.rpc("is_lead_organizer", { fid: festivalId });
+    if (!isLead) return fail("Organizátory spravuje jen hlavní organizátor.");
     const { error } = await db.from("festival_members").delete().eq("festival_id", festivalId).eq("user_id", userId);
     if (error) return fail(dbError(error));
     await log("organizer", "delete", userId, "odebrán z organizátorů");

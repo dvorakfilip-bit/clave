@@ -52,7 +52,13 @@ export function TeachersEditor({
                   </p>
                 </div>
                 <div className="flex gap-1">
-                  <Button onClick={() => setEditing(t)}>Medailonek</Button>
+                  <Button
+                    onClick={() => setEditing(t)}
+                    disabled={linkedIds.includes(t.id)}
+                    title={linkedIds.includes(t.id) ? "Učitel má vlastní účet – medailonek si upravuje sám" : undefined}
+                  >
+                    Medailonek
+                  </Button>
                   {!linkedIds.includes(t.id) &&
                     (invitation ? (
                       <Button variant="ghost" disabled={pending} onClick={() => run(() => revokeInvitation(slug, invitation.id))}>
@@ -159,12 +165,13 @@ function ProfileModal({ slug, teacher, onClose }: { slug: string; teacher: Teach
         }}
       >
         <p className="rounded-lg bg-accent-soft px-3 py-2 text-xs">
-          Medailonek je společný pro všechny festivaly. Změna se projeví všude a učitel uvidí, kdo ho upravil.
+          Medailonek je společný pro všechny festivaly. Změna se projeví všude a učitel uvidí, kdo ho upravil. Jakmile si učitel založí
+          účet, upravuje si medailonek už jen sám.
         </p>
         <Field label="Jméno">
           <input className={inputCls} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} required />
         </Field>
-        <Field label="Fotka (URL)" hint="Nahrávání fotek přidáme v další etapě.">
+        <Field label="Fotka (URL)" hint="Odkaz musí začínat https://. Nahrávání fotek přidáme v další etapě.">
           <input className={inputCls} value={f.photoUrl} onChange={(e) => setF({ ...f, photoUrl: e.target.value })} placeholder="https://…" />
         </Field>
         <Field label="Popis (česky)">

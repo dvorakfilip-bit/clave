@@ -6,7 +6,7 @@ import type { Festival } from "@/lib/types";
 import { TIMEZONES } from "./timezones";
 import { Button, Card, ErrorText, Field, inputCls, useAction } from "./ui";
 
-export function FestivalSettings({ festival }: { festival: Festival }) {
+export function FestivalSettings({ festival, isLead }: { festival: Festival; isLead: boolean }) {
   const { run, pending, error } = useAction();
   const [saved, setSaved] = useState(false);
   const [f, setF] = useState({
@@ -35,8 +35,11 @@ export function FestivalSettings({ festival }: { festival: Festival }) {
         <Field label="Název">
           <input className={inputCls} value={f.name} onChange={set("name")} required />
         </Field>
-        <Field label="Stav" hint="Koncept vidí jen organizátoři. Archiv zůstává veřejně ke čtení.">
-          <select className={inputCls} value={f.status} onChange={set("status")}>
+        <Field
+          label="Stav"
+          hint={isLead ? "Koncept vidí jen organizátoři. Archiv zůstává veřejně ke čtení." : "Stav festivalu mění jen hlavní organizátor."}
+        >
+          <select className={inputCls} value={f.status} onChange={set("status")} disabled={!isLead}>
             <option value="draft">Koncept</option>
             <option value="published">Zveřejněno</option>
             <option value="archived">Archiv</option>

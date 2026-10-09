@@ -5,6 +5,9 @@ import { readSheet } from "read-excel-file/browser";
 import writeXlsxFile from "write-excel-file/browser";
 import type { Cell } from "./format";
 
+/** Značka UTF-8 na začátku CSV – podle ní Excel pozná kódování. */
+const BOM = String.fromCharCode(0xfeff);
+
 function download(blob: Blob, fileName: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -27,8 +30,8 @@ export async function downloadXlsx(table: string[][], fileName: string) {
 
 /** CSV se středníkem a BOM – český Excel ho otevře správně včetně diakritiky. */
 export function downloadCsv(table: string[][], fileName: string) {
-  const csv = Papa.unparse(table, { delimiter: ";" });
-  download(new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }), fileName);
+  const csv = Papa.unparse(table, { delimiter: ";", escapeFormulae: true });
+  download(new Blob([BOM + csv], { type: "text/csv;charset=utf-8" }), fileName);
 }
 
 /** Načte XLSX nebo CSV jako tabulku buněk. */
@@ -36,7 +39,7 @@ export async function readTable(file: File): Promise<Cell[][]> {
   if (/\.xlsx$/i.test(file.name)) {
     return (await readSheet(file)) as Cell[][];
   }
-  const text = (await file.text()).replace(/^﻿/, "");
+  const text = (await file.text()).replace(new RegExp(`^${BOM}`), "");
   const result = Papa.parse<string[]>(text, { skipEmptyLines: true });
   return result.data;
 }

@@ -80,7 +80,10 @@ export async function applyImport(slug: string, rows: ImportRow[], deleteIds: st
     }
 
     // 3) Lekce a párty – při dočasné kolizi (lekce si vyměňují místa) se zkouší znovu
-    const work = plan.rows.filter((r) => r.action === "create" || r.action === "update").map((r) => r.row);
+    // ID se použije jen u úprav, které plán ověřil jako položky tohoto festivalu.
+    const work = plan.rows
+      .filter((r) => r.action === "create" || r.action === "update")
+      .map((r) => (r.action === "create" ? { ...r.row, id: null } : r.row));
     let pending = work;
     const failures: string[] = [];
     for (let pass = 0; pass < 4 && pending.length; pass++) {
