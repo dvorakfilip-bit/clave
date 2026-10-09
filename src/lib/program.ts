@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { cacheLife, cacheTag } from "next/cache";
 import { demoProgram } from "./demo-data";
 import { createPublicClient } from "./supabase/public";
@@ -19,7 +20,11 @@ export async function getFestivalProgram(slug: string): Promise<FestivalProgram 
 
   const db = createPublicClient();
   if (!db) return slug === demoProgram.festival.slug ? demoProgram : null;
+  return loadProgram(db, slug);
+}
 
+/** Načte festival přes daného klienta – veřejného (cache) nebo přihlášeného organizátora (správa, i koncepty). */
+export async function loadProgram(db: SupabaseClient, slug: string): Promise<FestivalProgram | null> {
   const { data: f } = await db.from("festivals").select("*").eq("slug", slug).maybeSingle();
   if (!f) return null;
 
