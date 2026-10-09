@@ -3,11 +3,15 @@
 import Link from "next/link";
 import { ClaveLogo } from "@/components/ClaveLogo";
 import { useI18n } from "@/lib/i18n";
+import { usePathname } from "next/navigation";
+import { usePersonal } from "./PersonalContext";
 import { useProgram } from "./ProgramContext";
 
 export function MorePage() {
   const { program } = useProgram();
   const { t, pick, locale, setLocale } = useI18n();
+  const { user, signOut, deleteAccount, error } = usePersonal();
+  const pathname = usePathname();
   const description = pick(program.festival.descriptionCs, program.festival.descriptionEn);
 
   return (
@@ -42,6 +46,38 @@ export function MorePage() {
             </button>
           ))}
         </div>
+      </section>
+
+      <section>
+        <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">{t("account")}</h2>
+        {user ? (
+          <div className="space-y-3 rounded-xl border border-line bg-surface p-3 text-sm">
+            <p>
+              {t("signedInAs")} <span className="font-medium">{user.email}</span>
+            </p>
+            {error && <p className="rounded-lg bg-accent-soft px-3 py-2">{error}</p>}
+            <div className="flex flex-wrap gap-2">
+              <button onClick={signOut} className="rounded-lg border border-line px-3 py-1.5">
+                {t("signOut")}
+              </button>
+              <button
+                onClick={async () => {
+                  if (window.confirm(t("deleteAccountConfirm")) && (await deleteAccount())) window.location.reload();
+                }}
+                className="rounded-lg px-3 py-1.5 text-highlight"
+              >
+                {t("deleteAccount")}
+              </button>
+            </div>
+          </div>
+        ) : user === null ? (
+          <Link
+            href={`/prihlaseni?next=${encodeURIComponent(pathname)}`}
+            className="inline-block rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-on-brand"
+          >
+            {t("signIn")}
+          </Link>
+        ) : null}
       </section>
 
       <Link href="/" className="flex items-center gap-2 pt-4 text-xs text-muted">

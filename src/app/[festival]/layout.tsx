@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { FestivalShell } from "@/components/festival/FestivalShell";
+import { PersonalProvider } from "@/components/festival/PersonalContext";
 import { ProgramProvider } from "@/components/festival/ProgramContext";
 import { fontFamily } from "@/lib/fonts";
 import { getFestivalProgram } from "@/lib/program";
@@ -17,7 +18,9 @@ async function Festival({ params, children }: { params: Promise<{ festival: stri
     <div className="festival flex min-h-dvh flex-col bg-page text-ink" style={{ fontFamily: fontFamily(program.festival.font) }}>
       <style>{css}</style>
       <ProgramProvider program={program}>
-        <FestivalShell>{children}</FestivalShell>
+        <PersonalProvider>
+          <FestivalShell>{children}</FestivalShell>
+        </PersonalProvider>
       </ProgramProvider>
     </div>
   );

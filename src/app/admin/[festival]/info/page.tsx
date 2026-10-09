@@ -1,6 +1,9 @@
 import { InfoPagesEditor } from "@/components/admin/InfoPagesEditor";
 import { loadAdminFestival } from "@/lib/admin/data";
 
+// Stránka čte data přihlášeného organizátora – smí počkat na server.
+export const instant = false;
+
 export default async function InfoAdminPage({ params }: PageProps<"/admin/[festival]/info">) {
   const { festival: slug } = await params;
   const { program } = await loadAdminFestival(slug);

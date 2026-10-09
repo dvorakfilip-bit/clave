@@ -42,3 +42,20 @@ export function formatRange(start: string, end: string, locale: Locale) {
 export function crossesMidnight(start: string, end: string | null) {
   return end !== null && end < start;
 }
+
+const toMinutes = (t: string) => {
+  const [h, m] = t.split(":").map(Number);
+  return h * 60 + m;
+};
+
+/** Časový úsek v minutách od půlnoci; konec po půlnoci se posune o den (párty). */
+export function span(start: string, end: string | null): [number, number] {
+  const s = toMinutes(start);
+  if (!end) return [s, s + 60];
+  const e = toMinutes(end);
+  return [s, e <= s ? e + 24 * 60 : e];
+}
+
+export function overlaps(a: [number, number], b: [number, number]) {
+  return a[0] < b[1] && b[0] < a[1];
+}

@@ -6,6 +6,9 @@ import { formatRange } from "@/lib/time";
 
 const STATUS = { draft: "Koncept", published: "Zveřejněno", archived: "Archiv" } as const;
 
+// Stránka čte data přihlášeného organizátora – smí počkat na server.
+export const instant = false;
+
 export default async function AdminHome() {
   const user = await requireUser();
   const db = await createServerSupabase();

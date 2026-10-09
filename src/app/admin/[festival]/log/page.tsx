@@ -24,6 +24,9 @@ const ACTION: Record<string, string> = {
   import: "importoval(a)",
 };
 
+// Stránka čte data přihlášeného organizátora – smí počkat na server.
+export const instant = false;
+
 /** Log změn festivalu – kdo, kdy, co (PRD 5.4). */
 export default async function LogPage({ params }: PageProps<"/admin/[festival]/log">) {
   const { festival: slug } = await params;

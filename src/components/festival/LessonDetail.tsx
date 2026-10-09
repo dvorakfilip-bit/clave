@@ -5,7 +5,9 @@ import { useParams } from "next/navigation";
 import { LevelDots } from "@/components/LevelDots";
 import { useI18n } from "@/lib/i18n";
 import { formatDayLong } from "@/lib/time";
+import { HeartButton } from "./HeartButton";
 import { PageHeader } from "./PageHeader";
+import { usePersonal } from "./PersonalContext";
 import { useProgram } from "./ProgramContext";
 import { TeacherAvatar } from "./TeacherAvatar";
 
@@ -13,6 +15,7 @@ export function LessonDetail() {
   const { id } = useParams<{ id: string }>();
   const { program, base, styleById, roomById, teacherById, lessonStart, lessonEnd } = useProgram();
   const { t, pick, locale } = useI18n();
+  const { isSelected, conflictsOf, titleOf } = usePersonal();
   const lesson = program.lessons.find((l) => l.id === id);
 
   if (!lesson) {
@@ -51,6 +54,16 @@ export function LessonDetail() {
               {lesson.level === 0 && <span className="text-xs">{t("allLevels")}</span>}
             </dd>
           </dl>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <HeartButton item={{ kind: "lesson", id: lesson.id }} size={22} withLabel className="rounded-lg border border-line bg-surface px-3 py-2 !opacity-100" />
+          {isSelected({ kind: "lesson", id: lesson.id }) && conflictsOf({ kind: "lesson", id: lesson.id }).length > 0 && (
+            <span className="text-xs text-highlight">
+              {t("conflictWith")}{" "}
+              {conflictsOf({ kind: "lesson", id: lesson.id }).map(titleOf).join(", ")}
+            </span>
+          )}
         </div>
 
         {description && <p className="whitespace-pre-line text-sm leading-relaxed">{description}</p>}

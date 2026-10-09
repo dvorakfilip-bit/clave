@@ -6,7 +6,10 @@ import { LevelDots } from "@/components/LevelDots";
 import { useI18n } from "@/lib/i18n";
 import { crossesMidnight, formatDay } from "@/lib/time";
 import type { Lesson, TimeSlot } from "@/lib/types";
-import { LessonCard } from "./LessonCard";
+import { HeartButton } from "./HeartButton";
+import { Badge, LessonCard } from "./LessonCard";
+import { ChangesBanner } from "./ChangesBanner";
+import { usePersonal } from "./PersonalContext";
 import { type Filters, useProgram } from "./ProgramContext";
 
 export function ProgramView() {
@@ -58,6 +61,7 @@ export function ProgramView() {
         </div>
       </div>
 
+      <ChangesBanner />
       {view === "grid" ? <GridView /> : <ListView />}
       <Parties />
       {filtersOpen && <FilterSheet onClose={() => setFiltersOpen(false)} />}
@@ -198,6 +202,7 @@ function ListView() {
 function Parties() {
   const { program, dayId, roomById } = useProgram();
   const { pick, t } = useI18n();
+  const { isChanged } = usePersonal();
   const parties = program.parties.filter((p) => p.dayId === dayId);
   if (!parties.length) return null;
   return (
@@ -215,9 +220,9 @@ function Parties() {
           <span className={`flex-1 ${p.cancelled ? "line-through" : ""}`}>
             {pick(p.titleCs, p.titleEn)} · {p.roomId ? roomById.get(p.roomId)?.name : p.place}
           </span>
-          {p.cancelled && (
-            <span className="rounded bg-highlight px-1 text-[9px] font-semibold uppercase text-on-highlight">{t("cancelled")}</span>
-          )}
+          {p.cancelled && <Badge>{t("cancelled")}</Badge>}
+          {!p.cancelled && isChanged({ kind: "party", id: p.id }) && <Badge>{t("changed")}</Badge>}
+          <HeartButton item={{ kind: "party", id: p.id }} />
         </div>
       ))}
     </div>
