@@ -10,7 +10,7 @@ import { paletteWarnings } from "@/lib/palette-check";
 import { festivalPalette } from "@/lib/theme";
 import type { FestivalProgram } from "@/lib/types";
 import { ImageUpload } from "./ImageUpload";
-import { Button, Card, ErrorText, Field, inputCls, useAction } from "./ui";
+import { Button, Card, ErrorText, Field, useAction } from "./ui";
 
 const ROLES = [
   { name: "Hlavní", hint: "Hlavička, vybraný den, tlačítka" },
@@ -77,16 +77,24 @@ export function BrandingEditor({ program, isLead }: { program: FestivalProgram; 
                 <li key={i}>
                   <div className="flex items-center gap-2">
                     <input type="color" value={/^#[0-9A-Fa-f]{6}$/.test(c) ? c : "#000000"} onChange={(e) => setColor(i, e.target.value.toUpperCase())} className="h-10 w-12 shrink-0 rounded-lg border border-line" aria-label={ROLES[i].name} />
-                    <input className={`${inputCls} w-28 font-mono`} value={c} onChange={(e) => setColor(i, e.target.value)} maxLength={7} />
                     <span className="min-w-0 flex-1 text-sm">
-                      <span className="font-medium">{ROLES[i].name}</span>
+                      <span className="block font-medium">{ROLES[i].name}</span>
                       <span className="block truncate text-xs text-muted">{ROLES[i].hint}</span>
                     </span>
-                    {i > 0 && i === colors.length - 1 && (
-                      <Button variant="ghost" type="button" onClick={() => setColors(colors.slice(0, -1))}>
-                        Odebrat
-                      </Button>
-                    )}
+                    <input
+                      className="w-24 shrink-0 rounded-lg border border-line bg-surface px-2 py-2 font-mono text-sm"
+                      value={c}
+                      onChange={(e) => setColor(i, e.target.value)}
+                      maxLength={7}
+                      aria-label={`${ROLES[i].name} – kód barvy`}
+                    />
+                    <span className="w-16 shrink-0 text-right">
+                      {i > 0 && i === colors.length - 1 && (
+                        <Button variant="ghost" type="button" className="!px-1" onClick={() => setColors(colors.slice(0, -1))}>
+                          Odebrat
+                        </Button>
+                      )}
+                    </span>
                   </div>
                   {warning && (
                     <p className="mt-1 text-xs text-highlight">
