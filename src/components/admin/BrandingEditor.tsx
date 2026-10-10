@@ -9,6 +9,7 @@ import { FONTS, fontFamily } from "@/lib/font-list";
 import { paletteWarnings } from "@/lib/palette-check";
 import { festivalPalette } from "@/lib/theme";
 import type { FestivalProgram } from "@/lib/types";
+import { ColorPicker } from "./ColorPicker";
 import { ImageUpload } from "./ImageUpload";
 import { Button, Card, ErrorText, Field, useAction } from "./ui";
 
@@ -76,18 +77,11 @@ export function BrandingEditor({ program, isLead }: { program: FestivalProgram; 
               return (
                 <li key={i}>
                   <div className="flex items-center gap-2">
-                    <input type="color" value={/^#[0-9A-Fa-f]{6}$/.test(c) ? c : "#000000"} onChange={(e) => setColor(i, e.target.value.toUpperCase())} className="h-10 w-12 shrink-0 rounded-lg border border-line" aria-label={ROLES[i].name} />
+                    <ColorPicker value={c} onChange={(hex) => setColor(i, hex)} label={ROLES[i].name} />
                     <span className="min-w-0 flex-1 text-sm">
                       <span className="block font-medium">{ROLES[i].name}</span>
                       <span className="block truncate text-xs text-muted">{ROLES[i].hint}</span>
                     </span>
-                    <input
-                      className="w-24 shrink-0 rounded-lg border border-line bg-surface px-2 py-2 font-mono text-sm"
-                      value={c}
-                      onChange={(e) => setColor(i, e.target.value)}
-                      maxLength={7}
-                      aria-label={`${ROLES[i].name} – kód barvy`}
-                    />
                     <span className="w-16 shrink-0 text-right">
                       {i > 0 && i === colors.length - 1 && (
                         <Button variant="ghost" type="button" className="!px-1" onClick={() => setColors(colors.slice(0, -1))}>

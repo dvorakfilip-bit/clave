@@ -4,6 +4,7 @@ import { useState } from "react";
 import { deleteRoom, deleteStyle, reorderRooms, saveRoom, saveStyle } from "@/app/admin/actions";
 import { contrast, mix } from "@/lib/color";
 import type { FestivalProgram, Room, Style } from "@/lib/types";
+import { ColorPicker } from "./ColorPicker";
 import { Button, Card, ErrorText, inputCls, useAction } from "./ui";
 
 export function RoomsStylesEditor({ program }: { program: FestivalProgram }) {
@@ -127,7 +128,7 @@ function StylesCard({ program }: { program: FestivalProgram }) {
           run(() => saveStyle(slug, draft), () => setDraft({ name: "", color: draft.color }));
         }}
       >
-        <input type="color" className="h-10 w-12 rounded-lg border border-line" value={draft.color} onChange={(e) => setDraft({ ...draft, color: e.target.value })} aria-label="Barva stylu" />
+        <ColorPicker value={draft.color} onChange={(color) => setDraft({ ...draft, color })} label="Barva nového stylu" />
         <input className={inputCls} placeholder="Název stylu" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} required />
         <Button disabled={pending}>Přidat</Button>
       </form>
@@ -152,7 +153,7 @@ function StyleRow(props: {
   return (
     <li className="py-2">
       <div className="flex items-center gap-2">
-        <input type="color" className="h-10 w-12 shrink-0 rounded-lg border border-line" value={v.color} onChange={(e) => setV({ ...v, color: e.target.value })} aria-label="Barva stylu" />
+        <ColorPicker value={v.color} onChange={(color) => setV({ ...v, color })} label={`Barva stylu ${v.name}`} />
         <input className={`${inputCls} flex-1`} value={v.name} onChange={(e) => setV({ ...v, name: e.target.value })} aria-label="Název stylu" />
         <span className="hidden rounded px-2 py-1 text-xs sm:inline" style={{ background: mix(v.color, "#ffffff", 0.84), color: mix(v.color, "#000000", 0.45) }}>
           Ukázka
