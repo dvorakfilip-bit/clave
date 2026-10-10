@@ -29,3 +29,7 @@ Aplikace běží na http://localhost:3000. Bez nastaveného Supabase zobrazuje u
 - `supabase/migrations/` – databázové schéma a oprávnění (RLS)
 - `scripts/` – pomocné skripty (seed)
 - `docs/` – PRD a značka
+
+## Zálohy
+
+Databáze se zálohuje každé ráno v 6:00 do soukromého repozitáře [`clave-backups`](https://github.com/dvorakfilip-bit/clave-backups) (GitHub Actions, posledních 30 záloh). Postup obnovy je v jeho README.
