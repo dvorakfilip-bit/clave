@@ -38,6 +38,9 @@ export function LoginForm() {
   const [email, setEmail] = useState("");
   const [state, setState] = useState<"idle" | "sending" | "sent" | "error">(params.get("error") ? "error" : "idle");
   const configured = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL);
+  // Přihlášení odkazem do e-mailu je vypnuté, dokud nemáme vlastní rozesílání e-mailů –
+  // Supabase zdarma pošle jen pár e-mailů za hodinu. Zapnutí: NEXT_PUBLIC_MAGIC_LINK=true.
+  const magicLinkEnabled = process.env.NEXT_PUBLIC_MAGIC_LINK === "true";
 
   const redirectTo = () => `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
 
@@ -68,34 +71,36 @@ export function LoginForm() {
       <button onClick={google} className="w-full rounded-lg bg-brand py-3 text-sm font-semibold text-on-brand">
         {tx.google}
       </button>
-      <details className="rounded-lg border border-line bg-surface p-3">
-        <summary className="cursor-pointer text-sm text-muted">{tx.other}</summary>
-        {state === "sent" ? (
-          <p className="mt-3 text-sm">{tx.sent}</p>
-        ) : (
-          <form onSubmit={magicLink} className="mt-3 space-y-2">
-            <label className="block text-xs text-muted" htmlFor="email">
-              {tx.email}
-            </label>
-            <input
-              id="email"
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg border border-line bg-page px-3 py-2 text-sm"
-              placeholder="jana@example.com"
-            />
-            <button disabled={state === "sending"} className="w-full rounded-lg border border-line py-2 text-sm font-medium">
-              {tx.send}
-            </button>
-          </form>
-        )}
-      </details>
+      {magicLinkEnabled && (
+        <details className="rounded-lg border border-line bg-surface p-3">
+          <summary className="cursor-pointer text-sm text-muted">{tx.other}</summary>
+          {state === "sent" ? (
+            <p className="mt-3 text-sm">{tx.sent}</p>
+          ) : (
+            <form onSubmit={magicLink} className="mt-3 space-y-2">
+              <label className="block text-xs text-muted" htmlFor="email">
+                {tx.email}
+              </label>
+              <input
+                id="email"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full rounded-lg border border-line bg-page px-3 py-2 text-sm"
+                placeholder="jana@example.com"
+              />
+              <button disabled={state === "sending"} className="w-full rounded-lg border border-line py-2 text-sm font-medium">
+                {tx.send}
+              </button>
+            </form>
+          )}
+        </details>
+      )}
       <p className="text-center text-xs text-muted">
         {t("signInConsent")}{" "}
         <Link href="/soukromi" className="underline">
-          {t("privacy").toLowerCase()}
+          {t("privacyLink")}
         </Link>
         .
       </p>

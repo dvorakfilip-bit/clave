@@ -327,7 +327,7 @@ Pravidla:
 ## 8. Přihlašování
 
 - **Google** – hlavní způsob.
-- **Magic link** (odkaz do e-mailu) – záložní, pod „Jiný způsob přihlášení“.
+- **Magic link** (odkaz do e-mailu) – záložní, pod „Jiný způsob přihlášení“. **Zatím vypnutý** (proměnná `NEXT_PUBLIC_MAGIC_LINK`), dokud nebude vlastní doména a rozesílání e-mailů – Supabase zdarma pošle jen pár e-mailů za hodinu.
 - Apple Sign-In: zatím ne (99 $/rok).
 
 ## 9. Technologie
