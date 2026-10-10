@@ -55,7 +55,8 @@ export function Field({ label, children, hint }: { label: string; children: Reac
   );
 }
 
-export const inputCls = "w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm";
+export const inputCls =
+  "w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm disabled:cursor-not-allowed disabled:bg-page disabled:text-muted disabled:opacity-70";
 
 export function Button({
   variant = "secondary",
