@@ -26,6 +26,14 @@ export function ImageUpload({
 
   async function onFile(file: File | undefined) {
     if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setError("Tento formát nejde nahrát. Použij JPG, PNG nebo WebP (fotku z iPhonu ulož jako JPG).");
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      setError("Obrázek je větší než 15 MB.");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -59,6 +67,7 @@ export function ImageUpload({
             </button>
           )}
         </div>
+        <p className="text-[11px] text-muted">JPG, PNG nebo WebP, max. 15 MB. Obrázek se automaticky zmenší.</p>
         {error && <p className="text-xs text-highlight">{error}</p>}
         <input
           ref={input}
