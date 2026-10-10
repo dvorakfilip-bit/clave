@@ -27,7 +27,7 @@ export default function Home() {
         <Link href="/soukromi" className="underline">
           Ochrana osobních údajů
         </Link>
-        <Link href="/admin" className="underline">
+        <Link href="/pro-organizatory" className="underline">
           Pro organizátory
         </Link>
         <span className="w-full">Vytvořeno s pomocí AI (Claude od Anthropic).</span>

@@ -11,6 +11,9 @@ async function UserBox() {
   const user = await requireUser();
   return (
     <span className="flex items-center gap-3 text-xs text-muted">
+      <Link href="/pro-organizatory" className="underline">
+        Návod
+      </Link>
       <span className="hidden sm:inline">{user.name}</span>
       <SignOutButton />
     </span>
