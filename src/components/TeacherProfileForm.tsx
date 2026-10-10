@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { revertMyTeacherProfile, updateMyTeacherProfile } from "@/app/ucet/actions";
+import { ImageUpload } from "@/components/admin/ImageUpload";
 import { Button, Card, ErrorText, Field, inputCls, useAction } from "@/components/admin/ui";
 
 interface Revision {
@@ -12,7 +13,15 @@ interface Revision {
 }
 
 /** Globální medailonek učitele a historie změn s možností vrátit (PRD 5.5). */
-export function TeacherProfileForm({ profile, revisions }: { profile: { name: string; photoUrl: string; bioCs: string; bioEn: string }; revisions: Revision[] }) {
+export function TeacherProfileForm({
+  profileId,
+  profile,
+  revisions,
+}: {
+  profileId: string;
+  profile: { name: string; photoUrl: string; bioCs: string; bioEn: string };
+  revisions: Revision[];
+}) {
   const { run, pending, error } = useAction();
   const [f, setF] = useState(profile);
   const [saved, setSaved] = useState(false);
@@ -35,8 +44,8 @@ export function TeacherProfileForm({ profile, revisions }: { profile: { name: st
           <Field label="Jméno">
             <input className={inputCls} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} required />
           </Field>
-          <Field label="Fotka (URL)" hint="Odkaz musí začínat https://.">
-            <input className={inputCls} value={f.photoUrl} onChange={(e) => setF({ ...f, photoUrl: e.target.value })} placeholder="https://…" />
+          <Field label="Fotka">
+            <ImageUpload value={f.photoUrl} onChange={(url) => setF({ ...f, photoUrl: url })} folder={`teachers/${profileId}`} maxSize={600} shape="round" />
           </Field>
           <Field label="Popis (česky)">
             <textarea className={inputCls} rows={4} value={f.bioCs} onChange={(e) => setF({ ...f, bioCs: e.target.value })} />

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 const TABS = [
   { href: "", label: "Nastavení" },
+  { href: "/vzhled", label: "Vzhled" },
   { href: "/program", label: "Program" },
   { href: "/casy", label: "Časy" },
   { href: "/mistnosti", label: "Místnosti a styly" },

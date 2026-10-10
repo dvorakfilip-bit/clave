@@ -3,7 +3,7 @@
 import { updateTag } from "next/cache";
 import { type ActionResult, dbError, withFestival } from "@/lib/admin/guard";
 import { datesBetween, generateSlotTimes, RESERVED_SLUGS } from "@/lib/admin/slots";
-import { FESTIVALS_TAG } from "@/lib/program";
+import { FESTIVALS_TAG, festivalTag } from "@/lib/program";
 import { csCount } from "@/lib/plural";
 import { createServerSupabase } from "@/lib/supabase/server";
 
@@ -472,6 +472,12 @@ export async function updateTeacherProfile(
     if (error) return fail(dbError(error));
     if (!updated?.length) return fail("Učitel má vlastní účet – medailonek si upravuje sám.");
     await log("teacher", "update", teacherId, input.name.trim());
+    // Globální medailonek se zobrazuje i na dalších festivalech – obnovit jejich cache.
+    const { data: festivals } = await db.from("festival_teachers").select("festivals(slug)").eq("teacher_profile_id", teacherId);
+    for (const row of festivals ?? []) {
+      const other = (row.festivals as unknown as { slug: string } | null)?.slug;
+      if (other) updateTag(festivalTag(other));
+    }
     return { ok: true };
   });
 }
@@ -638,4 +644,51 @@ export async function reorderInfoPages(slug: string, ids: string[]): Promise<Act
 export async function signOut() {
   const db = await createServerSupabase();
   await db.auth.signOut();
+}
+
+// ---------------------------------------------------------------------------
+// Vizuální identita (jen hlavní organizátor – hlídá i databáze)
+// ---------------------------------------------------------------------------
+
+export interface BrandingInput {
+  colors: string[];
+  font: string;
+  logoWideUrl: string;
+  logoSquareUrl: string;
+  bannerUrl: string;
+}
+
+const FONT_KEYS = ["inter", "poppins", "montserrat", "nunito", "playfair"];
+
+/** Obrázky smí pocházet jen z našeho úložiště. */
+function isStorageUrl(url: string) {
+  const base = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/images/`;
+  return url === "" || url.startsWith(base);
+}
+
+export async function updateBranding(slug: string, input: BrandingInput): Promise<ActionResult> {
+  return withFestival(slug, async ({ db, festivalId, log }) => {
+    const { data: isLead } = await db.rpc("is_lead_organizer", { fid: festivalId });
+    if (!isLead) return fail("Vzhled festivalu mění jen hlavní organizátor.");
+    const colors = input.colors.map((c) => c.trim().toUpperCase()).filter(Boolean);
+    if (colors.length < 1 || colors.length > 5 || colors.some((c) => !/^#[0-9A-F]{6}$/.test(c))) {
+      return fail("Zadej 1–5 barev ve tvaru #RRGGBB.");
+    }
+    if (!FONT_KEYS.includes(input.font)) return fail("Neznámé písmo.");
+    if (![input.logoWideUrl, input.logoSquareUrl, input.bannerUrl].every(isStorageUrl)) return fail("Obrázky nahraj přes tlačítko Nahrát.");
+
+    const { error } = await db
+      .from("festivals")
+      .update({
+        colors,
+        font: input.font,
+        logo_wide_url: input.logoWideUrl || null,
+        logo_square_url: input.logoSquareUrl || null,
+        banner_url: input.bannerUrl || null,
+      })
+      .eq("id", festivalId);
+    if (error) return fail(dbError(error));
+    await log("festival", "update", festivalId, "vzhled festivalu");
+    return { ok: true };
+  });
 }

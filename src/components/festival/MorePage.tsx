@@ -26,6 +26,11 @@ export function MorePage() {
         </Link>
       )}
 
+      {program.festival.bannerUrl && (
+        // eslint-disable-next-line @next/next/no-img-element -- banner nahrává organizátor
+        <img src={program.festival.bannerUrl} alt={program.festival.name} className="w-full rounded-xl object-cover" />
+      )}
+
       {description && <p className="text-sm leading-relaxed">{description}</p>}
 
       {program.infoPages.length > 0 && (

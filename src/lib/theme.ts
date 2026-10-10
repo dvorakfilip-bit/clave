@@ -5,7 +5,7 @@ import type { Style } from "./types";
  * Převede 1–5 barev festivalu na CSS proměnné pro světlý i tmavý režim
  * (PRD 7.2). Chybějící barvy se dopočítají z hlavní barvy.
  */
-export function festivalThemeCss(colors: string[], selector: string): string {
+export function festivalPalette(colors: string[]) {
   const primary = colors[0] ?? "#C8102E";
   const accent = colors[1] ?? mix(primary, "#ffffff", 0.35);
   const highlight = colors[2] ?? primary;
@@ -41,6 +41,13 @@ export function festivalThemeCss(colors: string[], selector: string): string {
     "--line": "#33333a",
   };
 
+  return { light, dark };
+}
+
+export type ThemeVars = ReturnType<typeof festivalPalette>["light"];
+
+export function festivalThemeCss(colors: string[], selector: string): string {
+  const { light, dark } = festivalPalette(colors);
   const block = (vars: Record<string, string>) =>
     Object.entries(vars)
       .map(([k, v]) => `${k}:${v};`)

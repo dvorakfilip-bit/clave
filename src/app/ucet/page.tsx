@@ -34,6 +34,7 @@ async function Profile() {
   return (
     <div className="space-y-6">
       <TeacherProfileForm
+        profileId={profile.id}
         profile={{ name: profile.name, photoUrl: profile.photo_url ?? "", bioCs: profile.bio_cs ?? "", bioEn: profile.bio_en ?? "" }}
         revisions={(revisions ?? []) as { id: number; created_at: string; by_me: boolean; previous: Record<string, string | null> }[]}
       />

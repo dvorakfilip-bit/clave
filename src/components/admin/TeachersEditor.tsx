@@ -15,6 +15,7 @@ import { TeacherAvatar } from "@/components/festival/TeacherAvatar";
 import type { Invitation } from "@/lib/admin/data";
 import { csCount } from "@/lib/plural";
 import type { FestivalProgram, Teacher } from "@/lib/types";
+import { ImageUpload } from "./ImageUpload";
 import { Button, Card, ErrorText, Field, inputCls, Modal, useAction } from "./ui";
 
 export interface TeacherBios {
@@ -92,7 +93,7 @@ export function TeachersEditor({
       </div>
 
       {editing && bios[editing.id] && (
-        <ProfileModal slug={slug} teacher={editing} bios={bios[editing.id]} linked={linkedIds.includes(editing.id)} onClose={() => setEditing(null)} />
+        <ProfileModal slug={slug} festivalId={program.festival.id} teacher={editing} bios={bios[editing.id]} linked={linkedIds.includes(editing.id)} onClose={() => setEditing(null)} />
       )}
       {inviting && <InviteModal slug={slug} teacher={inviting} onClose={() => setInviting(null)} />}
     </div>
@@ -158,12 +159,14 @@ function CreateNew({ slug }: { slug: string }) {
 
 function ProfileModal({
   slug,
+  festivalId,
   teacher,
   bios,
   linked,
   onClose,
 }: {
   slug: string;
+  festivalId: string;
   teacher: Teacher;
   bios: TeacherBios;
   linked: boolean;
@@ -185,12 +188,13 @@ function ProfileModal({
       >
         <h3 className="font-semibold">Pro tento festival</h3>
         <p className="text-xs text-muted">Zobrazí se jen na tomto festivalu. Prázdná pole převezmou globální medailonek.</p>
-        <Field label="Fotka (URL)" hint="Odkaz musí začínat https://.">
-          <input
-            className={inputCls}
+        <Field label="Fotka pro tento festival" hint="Bez fotky se použije fotka z globálního medailonku.">
+          <ImageUpload
             value={fest.photoUrl}
-            onChange={(e) => setFest({ ...fest, photoUrl: e.target.value })}
-            placeholder={glob.photoUrl || "https://…"}
+            onChange={(url) => setFest({ ...fest, photoUrl: url })}
+            folder={`festival-teachers/${festivalId}/${teacher.id}`}
+            maxSize={600}
+            shape="round"
           />
         </Field>
         <Field label="Popis (česky)">
@@ -225,8 +229,8 @@ function ProfileModal({
           <Field label="Jméno">
             <input className={inputCls} value={glob.name} onChange={(e) => setGlob({ ...glob, name: e.target.value })} required />
           </Field>
-          <Field label="Fotka (URL)" hint="Odkaz musí začínat https://.">
-            <input className={inputCls} value={glob.photoUrl} onChange={(e) => setGlob({ ...glob, photoUrl: e.target.value })} placeholder="https://…" />
+          <Field label="Fotka">
+            <ImageUpload value={glob.photoUrl} onChange={(url) => setGlob({ ...glob, photoUrl: url })} folder={`teachers/${teacher.id}`} maxSize={600} shape="round" />
           </Field>
           <Field label="Popis (česky)">
             <textarea className={inputCls} rows={3} value={glob.bioCs} onChange={(e) => setGlob({ ...glob, bioCs: e.target.value })} />

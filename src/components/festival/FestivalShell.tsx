@@ -34,7 +34,10 @@ export function FestivalShell({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-30 bg-brand text-on-brand">
         <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3">
           <Link href={base} className="flex min-w-0 flex-1 items-center gap-3">
-            {f.logoSquareUrl ? (
+            {f.logoWideUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- logo nahrává organizátor
+              <img src={f.logoWideUrl} alt={f.name} className="h-9 max-w-[55%] object-contain object-left" />
+            ) : f.logoSquareUrl ? (
               // eslint-disable-next-line @next/next/no-img-element -- logo nahrává organizátor
               <img src={f.logoSquareUrl} alt="" className="h-9 w-9 rounded-full object-cover" />
             ) : (
@@ -43,7 +46,7 @@ export function FestivalShell({ children }: { children: React.ReactNode }) {
               </span>
             )}
             <span className="min-w-0">
-              <span className="block truncate text-[15px] font-semibold leading-tight">{f.name}</span>
+              {!f.logoWideUrl && <span className="block truncate text-[15px] font-semibold leading-tight">{f.name}</span>}
               <span className="block text-xs opacity-85">{formatRange(f.startDate, f.endDate, locale)}</span>
             </span>
           </Link>
