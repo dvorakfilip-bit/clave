@@ -103,12 +103,21 @@ export function MorePage() {
         ) : null}
       </section>
 
-      <Link href="/" className="flex items-center gap-2 pt-4 text-xs text-muted">
-        <span className="text-muted">
+      <footer className="space-y-2 pt-4 text-xs text-muted">
+        <Link href="/" className="flex items-center gap-2">
           <ClaveLogo size={18} mono />
-        </span>
-        Clave
-      </Link>
+          Clave
+        </Link>
+        <p className="flex flex-wrap gap-x-4">
+          <Link href="/o-aplikaci" className="underline">
+            {t("about")}
+          </Link>
+          <Link href="/soukromi" className="underline">
+            {t("privacy")}
+          </Link>
+        </p>
+        <p>{t("madeWithAi")}</p>
+      </footer>
     </div>
   );
 }

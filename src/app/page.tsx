@@ -20,10 +20,17 @@ export default function Home() {
       <Suspense fallback={null}>
         <Festivals />
       </Suspense>
-      <footer className="mt-12 border-t border-line pt-4 text-xs text-muted">
+      <footer className="mt-12 flex flex-wrap gap-x-4 gap-y-1 border-t border-line pt-4 text-xs text-muted">
+        <Link href="/o-aplikaci" className="underline">
+          O aplikaci
+        </Link>
+        <Link href="/soukromi" className="underline">
+          Ochrana osobních údajů
+        </Link>
         <Link href="/admin" className="underline">
           Pro organizátory
         </Link>
+        <span className="w-full">Vytvořeno s pomocí AI (Claude od Anthropic).</span>
       </footer>
     </main>
   );

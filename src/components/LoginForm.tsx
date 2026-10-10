@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { useI18n } from "@/lib/i18n";
@@ -30,7 +31,7 @@ const text = {
 
 /** Google jako hlavní způsob, magic link schovaný pod „Jiný způsob přihlášení“ (PRD 8). */
 export function LoginForm() {
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
   const tx = text[locale];
   const params = useSearchParams();
   const next = params.get("next") ?? "/";
@@ -91,6 +92,13 @@ export function LoginForm() {
           </form>
         )}
       </details>
+      <p className="text-center text-xs text-muted">
+        {t("signInConsent")}{" "}
+        <Link href="/soukromi" className="underline">
+          {t("privacy").toLowerCase()}
+        </Link>
+        .
+      </p>
     </div>
   );
 }

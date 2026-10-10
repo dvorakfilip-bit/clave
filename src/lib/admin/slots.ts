@@ -28,4 +28,4 @@ export function datesBetween(start: string, end: string) {
   return out;
 }
 
-export const RESERVED_SLUGS = ["admin", "prihlaseni", "auth", "api", "ucet", "_next"];
+export const RESERVED_SLUGS = ["admin", "prihlaseni", "auth", "api", "ucet", "soukromi", "o-aplikaci", "offline", "_next"];
