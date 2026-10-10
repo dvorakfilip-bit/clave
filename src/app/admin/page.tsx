@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { NewFestivalForm } from "@/components/admin/NewFestivalForm";
 import { requireUser } from "@/lib/auth";
+import { SITE_HOST } from "@/lib/site";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { formatRange } from "@/lib/time";
 
@@ -30,7 +31,7 @@ export default async function AdminHome() {
                 <span>
                   <span className="block font-medium">{f.name}</span>
                   <span className="block text-xs text-muted">
-                    clave.cz/{f.slug} · {formatRange(f.start_date, f.end_date, "cs")}
+                    {SITE_HOST}/{f.slug} · {formatRange(f.start_date, f.end_date, "cs")}
                   </span>
                 </span>
                 <span className="rounded-full border border-line px-2 py-0.5 text-xs">{STATUS[f.status as keyof typeof STATUS]}</span>

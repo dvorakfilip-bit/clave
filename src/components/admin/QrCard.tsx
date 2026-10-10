@@ -2,9 +2,8 @@
 
 import QRCode from "qrcode";
 import { useMemo } from "react";
+import { SITE_URL } from "@/lib/site";
 import { Button, Card } from "./ui";
-
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://clave.cz";
 
 /**
  * QR kód festivalu s logem Clave uprostřed (PRD 7.6): oprava chyb H,
@@ -48,7 +47,7 @@ function download(href: string, fileName: string) {
 }
 
 export function QrCard({ slug, name }: { slug: string; name: string }) {
-  const url = `${SITE_URL.replace(/\/$/, "")}/${slug}`;
+  const url = `${SITE_URL}/${slug}`;
   const svg = useMemo(() => qrSvg(url), [url]);
   const dataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 

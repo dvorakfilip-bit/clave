@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { AdminTabs } from "@/components/admin/AdminTabs";
 import { loadAdminFestival } from "@/lib/admin/data";
+import { SITE_HOST } from "@/lib/site";
 
 // Hlavička festivalu čte data přihlášeného organizátora – vstup do správy smí počkat na server.
 export const instant = false;
 
-const STATUS ={ draft: "Koncept", published: "Zveřejněno", archived: "Archiv" } as const;
+const STATUS = { draft: "Koncept", published: "Zveřejněno", archived: "Archiv" } as const;
 
 export default async function FestivalAdminLayout({ params, children }: LayoutProps<"/admin/[festival]">) {
   const { festival: slug } = await params;
@@ -20,7 +21,7 @@ export default async function FestivalAdminLayout({ params, children }: LayoutPr
           <p className="text-xs text-muted">
             {STATUS[f.status]} ·{" "}
             <Link href={`/${f.slug}`} className="underline" target="_blank">
-              clave.cz/{f.slug}
+              {SITE_HOST}/{f.slug}
             </Link>
           </p>
         </div>

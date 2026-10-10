@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { createFestival } from "@/app/admin/actions";
+import { SITE_HOST } from "@/lib/site";
 import { Button, Card, ErrorText, Field, inputCls, useAction } from "./ui";
 import { TIMEZONES } from "./timezones";
 
@@ -37,7 +38,7 @@ export function NewFestivalForm() {
         <Field label="Název">
           <input className={inputCls} value={f.name} required onChange={(e) => setF({ ...f, name: e.target.value, slug: f.slug === slugify(f.name) ? slugify(e.target.value) : f.slug })} />
         </Field>
-        <Field label="Adresa" hint={`clave.cz/${f.slug || "…"}`}>
+        <Field label="Adresa" hint={`${SITE_HOST}/${f.slug || "…"}`}>
           <input className={inputCls} value={f.slug} required onChange={set("slug")} pattern="[a-z0-9]+(-[a-z0-9]+)*" />
         </Field>
         <Field label="Začátek">
