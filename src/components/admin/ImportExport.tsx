@@ -124,6 +124,21 @@ function ImportCard({ slug }: { slug: string }) {
     });
   }
 
+  // Zaškrtnutí lekce ke smazání může odstranit kolizi – náhled se přepočítá.
+  function changeDeletes(next: Set<string>) {
+    setDeleteIds(next);
+    if (!rows) return;
+    startReading(async () => {
+      try {
+        const result = await previewImport(slug, rows, [...next]);
+        if (result.ok) setPlan(result.data ?? null);
+        else setFileError(result.error);
+      } catch {
+        setFileError(tr("Nepodařilo se spojit se serverem.", "Couldn't reach the server."));
+      }
+    });
+  }
+
   const changes = plan?.rows.filter((r) => r.action !== "unchanged") ?? [];
   const counts = plan && {
     create: plan.rows.filter((r) => r.action === "create").length,
@@ -243,7 +258,7 @@ function ImportCard({ slug }: { slug: string }) {
             </div>
           )}
 
-          {plan.deleteCandidates.length > 0 && plan.errorCount === 0 && (
+          {plan.deleteCandidates.length > 0 && (
             <div className="rounded-lg border border-line p-3 text-sm">
               <div className="mb-2 flex items-center justify-between gap-2">
                 <p className="font-medium">
@@ -252,8 +267,9 @@ function ImportCard({ slug }: { slug: string }) {
                 </p>
                 <button
                   className="text-xs text-muted underline"
+                  disabled={reading}
                   onClick={() =>
-                    setDeleteIds(deleteIds.size === plan.deleteCandidates.length ? new Set() : new Set(plan.deleteCandidates.map((c) => c.id)))
+                    changeDeletes(deleteIds.size === plan.deleteCandidates.length ? new Set() : new Set(plan.deleteCandidates.map((c) => c.id)))
                   }
                 >
                   {deleteIds.size === plan.deleteCandidates.length ? tr("Nic nemazat", "Delete nothing") : tr("Smazat vše", "Delete all")}
@@ -266,11 +282,12 @@ function ImportCard({ slug }: { slug: string }) {
                       <input
                         type="checkbox"
                         checked={deleteIds.has(c.id)}
+                        disabled={reading}
                         onChange={(e) => {
                           const next = new Set(deleteIds);
                           if (e.target.checked) next.add(c.id);
                           else next.delete(c.id);
-                          setDeleteIds(next);
+                          changeDeletes(next);
                         }}
                       />
                       {c.label}
@@ -288,12 +305,17 @@ function ImportCard({ slug }: { slug: string }) {
           )}
 
           {plan.errorCount > 0 ? (
-            <p className="text-sm">{tr("Oprav chyby v souboru a nahraj ho znovu.", "Fix the errors in the file and upload it again.")}</p>
+            <p className="text-sm">
+              {tr(
+                "Oprav chyby v souboru a nahraj ho znovu, nebo zaškrtni ke smazání lekce, se kterými nové řádky kolidují.",
+                "Fix the errors in the file and upload it again, or check the classes that the new rows collide with for deletion.",
+              )}
+            </p>
           ) : (
             <div className="flex gap-2">
               <Button
                 variant="primary"
-                disabled={pending || (counts.create + counts.update + deleteIds.size === 0 && !plan.newRooms.length && !plan.newStyles.length)}
+                disabled={pending || reading || (counts.create + counts.update + deleteIds.size === 0 && !plan.newRooms.length && !plan.newStyles.length)}
                 onClick={() =>
                   run(
                     () => applyImport(slug, rows, [...deleteIds]),

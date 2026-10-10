@@ -53,7 +53,7 @@ function PageModal({ slug, page, onClose }: { slug: string; page?: InfoPage; onC
   const { run, pending, error } = useAction();
   const [f, setF] = useState({ titleCs: page?.titleCs ?? "", titleEn: page?.titleEn ?? "", bodyCs: page?.bodyCs ?? "", bodyEn: page?.bodyEn ?? "" });
   return (
-    <Modal title={page ? tr("Upravit stránku", "Edit page") : tr("Nová stránka", "New page")} onClose={onClose}>
+    <Modal title={page ? tr("Upravit stránku", "Edit page") : tr("Nová stránka", "New page")} onClose={onClose} busy={pending}>
       <form
         className="grid gap-3 sm:grid-cols-2"
         onSubmit={(e) => {

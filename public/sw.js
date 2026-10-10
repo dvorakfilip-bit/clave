@@ -3,14 +3,17 @@
  *
  * - Stránky (HTML): nejdřív síť, bez signálu uložená verze. Online tedy vždy čerstvý program.
  * - Statické soubory aplikace a obrázky: z paměti (mají v názvu otisk obsahu, nemění se).
+ *   Paměť souborů má strop – nejstarší soubory (z minulých verzí aplikace) se mažou.
  * - Data účastníka (Supabase) se tu neřeší – osobní výběr si aplikace ukládá sama.
- * - Stránka festivalu pošle zprávu „precache“ se seznamem adres, které se mají uložit dopředu.
+ * - Stránka festivalu pošle zprávu „precache“ se seznamem adres, které se mají uložit dopředu;
+ *   uloží se i skripty a styly, které tyto stránky potřebují.
  */
 
-const VERSION = "v1";
+const VERSION = "v2";
 const PAGES = `clave-pages-${VERSION}`;
 const ASSETS = `clave-assets-${VERSION}`;
 const OFFLINE_URL = "/offline.html";
+const MAX_ASSETS = 400;
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(PAGES).then((cache) => cache.add(OFFLINE_URL)));
@@ -67,26 +70,59 @@ async function cacheFirst(request) {
   const cached = await cache.match(request);
   if (cached) return cached;
   try {
-    const response = await fetch(request);
-    if (response.ok || response.type === "opaque") cache.put(request, response.clone());
+    // Obrázky z úložiště jsou z jiné domény – stahují se s CORS, aby šlo poznat chybu
+    // (neprůhlednou odpověď by šlo uložit i rozbitou, a už navždy).
+    const crossOrigin = new URL(request.url).origin !== self.location.origin;
+    const response = crossOrigin
+      ? await fetch(request.url, { mode: "cors", credentials: "omit" }).catch(() => fetch(request))
+      : await fetch(request);
+    if (response.ok) {
+      await cache.put(request, response.clone());
+      trimAssets(cache);
+    }
     return response;
   } catch {
     return Response.error();
   }
 }
 
+/** Udrží paměť souborů pod stropem – klíče jsou v pořadí uložení, nejstarší jdou pryč. */
+async function trimAssets(cache) {
+  const keys = await cache.keys();
+  await Promise.all(keys.slice(0, Math.max(0, keys.length - MAX_ASSETS)).map((k) => cache.delete(k)));
+}
+
+/** Skripty a styly aplikace odkazované ze stránky (bez nich by uložená stránka offline nefungovala). */
+function assetsOf(html) {
+  return [...new Set(html.match(/\/_next\/static\/[^"'\s)\\]+/g) ?? [])];
+}
+
 // Uložení stránek festivalu dopředu (program, Můj program, učitelé, info, vybrané lekce).
 self.addEventListener("message", (event) => {
   if (event.data?.type !== "precache" || !Array.isArray(event.data.urls)) return;
   event.waitUntil(
-    caches.open(PAGES).then((cache) =>
-      Promise.all(
-        event.data.urls.map((path) =>
-          fetch(path, { credentials: "same-origin" })
-            .then((response) => (response.ok ? cache.put(path, response) : undefined))
-            .catch(() => undefined),
-        ),
-      ),
-    ),
+    (async () => {
+      const pages = await caches.open(PAGES);
+      const assets = await caches.open(ASSETS);
+      const needed = new Set();
+      await Promise.all(
+        event.data.urls.map(async (path) => {
+          try {
+            const response = await fetch(path, { credentials: "same-origin" });
+            if (!response.ok) return;
+            for (const asset of assetsOf(await response.clone().text())) needed.add(asset);
+            await pages.put(path, response);
+          } catch {}
+        }),
+      );
+      for (const asset of needed) {
+        if (await assets.match(asset)) continue;
+        try {
+          const response = await fetch(asset);
+          if (response.ok) await assets.put(asset, response);
+        } catch {}
+      }
+      await trimAssets(assets);
+    })(),
   );
 });

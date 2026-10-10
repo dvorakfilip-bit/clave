@@ -32,6 +32,8 @@ export async function loadInvitations(db: Awaited<ReturnType<typeof createServer
     .select("id, email, role, teacher_profile_id, created_at")
     .eq("festival_id", festivalId)
     .eq("status", "pending")
+    // Propadlé pozvánky už nejde přijmout – ve správě se nezobrazí a učitele jde pozvat znovu.
+    .gt("expires_at", new Date().toISOString())
     .order("created_at", { ascending: false });
   return (data ?? []).map((i) => ({
     id: i.id,

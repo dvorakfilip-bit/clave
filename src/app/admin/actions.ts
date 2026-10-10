@@ -3,6 +3,7 @@
 import { updateTag } from "next/cache";
 import { type ActionResult, dbError, withFestival } from "@/lib/admin/guard";
 import { datesBetween, generateSlotTimes, RESERVED_SLUGS } from "@/lib/admin/slots";
+import { removeImages } from "@/lib/admin/storage";
 import { FESTIVALS_TAG, festivalTag } from "@/lib/program";
 import { csCount } from "@/lib/plural";
 import { m } from "@/lib/server-locale";
@@ -10,6 +11,23 @@ import { createServerSupabase } from "@/lib/supabase/server";
 
 const fail = (error: string): ActionResult<never> => ({ ok: false, error });
 const clean = (v: string | null | undefined) => (v && v.trim() ? v.trim() : null);
+const EMAIL = /^\S+@\S+\.\S+$/;
+/** Pozice na konec seznamu (po smazání může být v číslování mezera). */
+const nextPosition = (rows: { position: number }[] | null) => Math.max(-1, ...(rows ?? []).map((r) => r.position)) + 1;
+
+type Db = Awaited<ReturnType<typeof createServerSupabase>>;
+
+/**
+ * Kontrola nových časových slotů dne: stejný slot podruhé se nepřidá, překryv s jiným
+ * slotem se jen hlásí (vícehodinové workshopy ho můžou potřebovat).
+ */
+async function checkSlots(db: Db, dayId: string, times: { startsAt: string; endsAt: string }[], exceptId?: string) {
+  const { data } = await db.from("time_slots").select("id, starts_at, ends_at").eq("day_id", dayId);
+  const existing = (data ?? []).filter((s) => s.id !== exceptId).map((s) => ({ startsAt: s.starts_at.slice(0, 5), endsAt: s.ends_at.slice(0, 5) }));
+  const fresh = times.filter((t) => !existing.some((e) => e.startsAt === t.startsAt && e.endsAt === t.endsAt));
+  const overlapping = existing.filter((e) => fresh.some((t) => e.startsAt < t.endsAt && e.endsAt > t.startsAt));
+  return { fresh, overlapping: overlapping.map((e) => `${e.startsAt}–${e.endsAt}`) };
+}
 
 // ---------------------------------------------------------------------------
 // Festival
@@ -26,7 +44,7 @@ export interface FestivalInput {
   status: "draft" | "published" | "archived";
 }
 
-export async function updateFestival(slug: string, input: FestivalInput): Promise<ActionResult> {
+export async function updateFestival(slug: string, input: FestivalInput, confirmed = false): Promise<ActionResult> {
   return withFestival(slug, async ({ db, festivalId, log }) => {
     if (!input.name.trim()) return fail(await m("Vyplň název festivalu.", "Enter the festival name."));
     if (input.shortName.trim().length > 15) {
@@ -39,6 +57,20 @@ export async function updateFestival(slug: string, input: FestivalInput): Promis
     // Dny festivalu podle termínu; den s programem nelze odebrat.
     const { data: days } = await db.from("days").select("id, date").eq("festival_id", festivalId);
     const toRemove = (days ?? []).filter((d) => !dates.includes(d.date));
+    if (toRemove.length && !confirmed) {
+      // Sloty odebíraného dne by se smazaly s ním – zeptat se.
+      const { count } = await db.from("time_slots").select("id", { count: "exact", head: true }).in("day_id", toRemove.map((d) => d.id));
+      if (count) {
+        const removed = toRemove.map((d) => d.date).join(", ");
+        return {
+          ok: true,
+          warning: await m(
+            `Odebrané dny (${removed}) mají časové sloty, které se smažou. Pokračovat?`,
+            `The removed days (${removed}) have time slots that will be deleted. Continue?`,
+          ),
+        };
+      }
+    }
     if (toRemove.length) {
       const { error } = await db.from("days").delete().in("id", toRemove.map((d) => d.id));
       if (error) {
@@ -103,6 +135,9 @@ export async function createFestival(input: NewFestivalInput): Promise<ActionRes
   if (RESERVED_SLUGS.includes(slug)) return fail(await m("Tuto adresu nelze použít.", "This address can't be used."));
   if (!input.name.trim()) return fail(await m("Vyplň název festivalu.", "Enter the festival name."));
   if (input.endDate < input.startDate) return fail(await m("Konec festivalu je před začátkem.", "The festival ends before it starts."));
+  const dates = datesBetween(input.startDate, input.endDate);
+  if (dates.length > 30) return fail(await m("Festival může trvat nejvýš 30 dní.", "A festival can last at most 30 days."));
+  if (!EMAIL.test(input.leadEmail.trim())) return fail(await m("Zadej platný e-mail hlavního organizátora.", "Enter a valid email for the lead organizer."));
 
   const { data: festival, error } = await db
     .from("festivals")
@@ -117,10 +152,13 @@ export async function createFestival(input: NewFestivalInput): Promise<ActionRes
     );
   }
 
-  await db.from("days").insert(datesBetween(input.startDate, input.endDate).map((date) => ({ festival_id: festival.id, date })));
-
-  const lead = await addOrganizer(db, festival.id, input.leadEmail, "lead_organizer");
-  if (!lead.ok) return lead;
+  // Když se něco nepovede, festival se smaže, aby adresa nezůstala zablokovaná.
+  const { error: daysError } = await db.from("days").insert(dates.map((date) => ({ festival_id: festival.id, date })));
+  const lead = daysError ? fail(await dbError(daysError)) : await addOrganizer(db, festival.id, input.leadEmail, "lead_organizer");
+  if (!lead.ok) {
+    await db.from("festivals").delete().eq("id", festival.id);
+    return lead;
+  }
   updateTag(FESTIVALS_TAG);
   return { ok: true, data: { slug, invited: lead.data === "invited" } };
 }
@@ -133,17 +171,23 @@ export async function generateSlots(
   slug: string,
   dayId: string,
   opts: { start: string; minutes: number; pause: number; count: number },
+  confirmed = false,
 ): Promise<ActionResult> {
   return withFestival(slug, async ({ db, festivalId, log }) => {
     if (opts.minutes < 5 || opts.count < 1 || opts.count > 30) {
       return fail(await m("Zkontroluj délku a počet slotů.", "Check the slot length and count."));
     }
-    const times = generateSlotTimes(opts.start, opts.minutes, opts.pause, opts.count);
+    const { fresh, overlapping } = await checkSlots(db, dayId, generateSlotTimes(opts.start, opts.minutes, opts.pause, opts.count));
+    if (!fresh.length) return fail(await m("Tyto sloty už den má.", "This day already has these time slots."));
+    if (overlapping.length && !confirmed) {
+      const list = overlapping.join(", ");
+      return { ok: true, warning: await m(`Nové sloty se překrývají s ${list}. Přesto přidat?`, `The new time slots overlap with ${list}. Add anyway?`) };
+    }
     const { error } = await db
       .from("time_slots")
-      .insert(times.map((t) => ({ festival_id: festivalId, day_id: dayId, starts_at: t.startsAt, ends_at: t.endsAt })));
+      .insert(fresh.map((t) => ({ festival_id: festivalId, day_id: dayId, starts_at: t.startsAt, ends_at: t.endsAt })));
     if (error) return fail(await dbError(error));
-    await log("slots", "create", dayId, `${csCount(times.length, ["slot", "sloty", "slotů"])} od ${opts.start}`);
+    await log("slots", "create", dayId, `${csCount(fresh.length, ["slot", "sloty", "slotů"])} od ${opts.start}`);
     return { ok: true };
   });
 }
@@ -163,9 +207,19 @@ export async function copySlots(slug: string, fromDayId: string, toDayId: string
   });
 }
 
-export async function saveSlot(slug: string, slot: { id?: string; dayId: string; startsAt: string; endsAt: string }): Promise<ActionResult> {
+export async function saveSlot(
+  slug: string,
+  slot: { id?: string; dayId: string; startsAt: string; endsAt: string },
+  confirmed = false,
+): Promise<ActionResult> {
   return withFestival(slug, async ({ db, festivalId, log }) => {
     if (slot.endsAt <= slot.startsAt) return fail(await m("Konec slotu musí být po začátku.", "The slot must end after it starts."));
+    const { fresh, overlapping } = await checkSlots(db, slot.dayId, [{ startsAt: slot.startsAt, endsAt: slot.endsAt }], slot.id);
+    if (!fresh.length) return fail(await m("Takový slot už den má.", "This day already has this time slot."));
+    if (overlapping.length && !confirmed) {
+      const list = overlapping.join(", ");
+      return { ok: true, warning: await m(`Slot se překrývá s ${list}. Přesto uložit?`, `The time slot overlaps with ${list}. Save anyway?`) };
+    }
     const row = { festival_id: festivalId, day_id: slot.dayId, starts_at: slot.startsAt, ends_at: slot.endsAt };
     const { error } = slot.id ? await db.from("time_slots").update(row).eq("id", slot.id) : await db.from("time_slots").insert(row);
     if (error) return fail(await dbError(error));
@@ -201,8 +255,8 @@ export async function saveRoom(slug: string, room: { id?: string; name: string }
     if (room.id) {
       ({ error } = await db.from("rooms").update({ name: room.name.trim() }).eq("id", room.id));
     } else {
-      const { count } = await db.from("rooms").select("id", { count: "exact", head: true }).eq("festival_id", festivalId);
-      ({ error } = await db.from("rooms").insert({ festival_id: festivalId, name: room.name.trim(), position: count ?? 0 }));
+      const { data: rooms } = await db.from("rooms").select("position").eq("festival_id", festivalId);
+      ({ error } = await db.from("rooms").insert({ festival_id: festivalId, name: room.name.trim(), position: nextPosition(rooms) }));
     }
     if (error) return fail(await dbError(error));
     await log("room", room.id ? "update" : "create", room.id ?? null, room.name.trim());
@@ -342,7 +396,11 @@ export async function saveLesson(slug: string, input: LessonInput, confirmed = f
     if (removed.length) await db.from("lesson_teachers").delete().eq("lesson_id", id).in("teacher_profile_id", removed);
     if (added.length) {
       const { error } = await db.from("lesson_teachers").insert(added.map((t) => ({ lesson_id: id, teacher_profile_id: t })));
-      if (error) return fail(await dbError(error));
+      if (error) {
+        // Nová lekce bez učitelů by blokovala sál i opakované uložení – raději ji smazat.
+        if (!input.id) await db.from("lessons").delete().eq("id", id);
+        return fail(await dbError(error));
+      }
     }
 
     await log("lesson", input.id ? "update" : "create", id, title);
@@ -508,6 +566,14 @@ export async function removeTeacherFromFestival(slug: string, teacherId: string)
         ),
       );
     }
+    // Nevyřízená pozvánka by po odebrání zůstala platná a nešla by zrušit.
+    const { error: inviteError } = await db
+      .from("invitations")
+      .update({ status: "revoked" })
+      .eq("festival_id", festivalId)
+      .eq("teacher_profile_id", teacherId)
+      .eq("status", "pending");
+    if (inviteError) return fail(await dbError(inviteError));
     const { error } = await db.from("festival_teachers").delete().eq("festival_id", festivalId).eq("teacher_profile_id", teacherId);
     if (error) return fail(await dbError(error));
     const { data } = await db.from("teacher_profiles").select("name").eq("id", teacherId).single();
@@ -562,6 +628,12 @@ export async function updateFestivalTeacherBio(
     if (clean(input.photoUrl) && !input.photoUrl.trim().startsWith("https://")) {
       return fail(await m("Odkaz na fotku musí začínat https://.", "The photo link must start with https://."));
     }
+    const { data: before } = await db
+      .from("festival_teachers")
+      .select("photo_url")
+      .eq("festival_id", festivalId)
+      .eq("teacher_profile_id", teacherId)
+      .maybeSingle();
     const { data, error } = await db
       .from("festival_teachers")
       .update({ bio_cs: clean(input.bioCs), bio_en: clean(input.bioEn), photo_url: clean(input.photoUrl) })
@@ -570,6 +642,7 @@ export async function updateFestivalTeacherBio(
       .select("teacher_profiles(name)")
       .single();
     if (error) return fail(await dbError(error));
+    await removeImages(db, [before?.photo_url], [clean(input.photoUrl)]);
     const name = (data.teacher_profiles as unknown as { name: string } | null)?.name ?? "";
     await log("teacher", "update", teacherId, `${name} – medailonek pro festival`);
     return { ok: true };
@@ -611,14 +684,25 @@ async function addOrganizer(
   role: "lead_organizer" | "organizer",
 ): Promise<ActionResult<"added" | "invited">> {
   const address = email.trim().toLowerCase();
-  if (!/^\S+@\S+\.\S+$/.test(address)) return fail(await m("Zadej platný e-mail.", "Enter a valid email."));
+  if (!EMAIL.test(address)) return fail(await m("Zadej platný e-mail.", "Enter a valid email."));
   const { data: userId } = await db.rpc("find_user_by_email", { lookup: address, fid: festivalId });
   const {
     data: { user: me },
   } = await db.auth.getUser();
 
   if (userId) {
-    const { error } = await db.from("festival_members").upsert({ festival_id: festivalId, user_id: userId, role });
+    // Už je členem: pozvánka smí roli jen zvýšit, snížit ji jde jen v seznamu organizátorů.
+    const { data: member } = await db.from("festival_members").select("role").eq("festival_id", festivalId).eq("user_id", userId).maybeSingle();
+    if (member && (member.role === role || member.role === "lead_organizer")) {
+      return fail(
+        member.role === "lead_organizer"
+          ? await m("Už je hlavním organizátorem. Roli můžeš změnit v seznamu organizátorů.", "Already a lead organizer. You can change the role in the list of organizers.")
+          : await m("Už je organizátorem festivalu.", "Already an organizer of this festival."),
+      );
+    }
+    const { error } = member
+      ? await db.from("festival_members").update({ role }).eq("festival_id", festivalId).eq("user_id", userId)
+      : await db.from("festival_members").insert({ festival_id: festivalId, user_id: userId, role });
     if (error) return fail(await dbError(error));
     return { ok: true, data: "added" };
   }
@@ -684,8 +768,8 @@ export async function saveInfoPage(
     if (page.id) {
       ({ error } = await db.from("info_pages").update(row).eq("id", page.id));
     } else {
-      const { count } = await db.from("info_pages").select("id", { count: "exact", head: true }).eq("festival_id", festivalId);
-      ({ error } = await db.from("info_pages").insert({ ...row, festival_id: festivalId, position: count ?? 0 }));
+      const { data: pages } = await db.from("info_pages").select("position").eq("festival_id", festivalId);
+      ({ error } = await db.from("info_pages").insert({ ...row, festival_id: festivalId, position: nextPosition(pages) }));
     }
     if (error) return fail(await dbError(error));
     await log("info", page.id ? "update" : "create", page.id ?? null, title);
@@ -753,6 +837,7 @@ export async function updateBranding(slug: string, input: BrandingInput): Promis
       return fail(await m("Obrázky nahraj přes tlačítko Nahrát.", "Upload images using the Upload button."));
     }
 
+    const { data: before } = await db.from("festivals").select("logo_wide_url, logo_square_url, banner_url").eq("id", festivalId).single();
     const { error } = await db
       .from("festivals")
       .update({
@@ -764,6 +849,8 @@ export async function updateBranding(slug: string, input: BrandingInput): Promis
       })
       .eq("id", festivalId);
     if (error) return fail(await dbError(error));
+    // Nahrazené obrázky už nic nepoužívá.
+    await removeImages(db, [before?.logo_wide_url, before?.logo_square_url, before?.banner_url], [input.logoWideUrl, input.logoSquareUrl, input.bannerUrl]);
     await log("festival", "update", festivalId, "vzhled festivalu");
     return { ok: true };
   });

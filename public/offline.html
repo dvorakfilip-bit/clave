@@ -16,9 +16,19 @@
     <main>
       <svg width="56" height="56" viewBox="0 0 100 100" aria-hidden="true"><rect width="100" height="100" rx="22" fill="#C8102E"/><circle cx="16" cy="50" r="5" fill="#fff"/><circle cx="32" cy="50" r="5" fill="#fff"/><circle cx="56" cy="50" r="5" fill="#fff"/><circle cx="71" cy="50" r="5" fill="#fff"/><circle cx="86" cy="50" r="5" fill="#fff"/></svg>
       <h1>Jsi offline</h1>
-      <p>Tahle stránka není uložená v telefonu. Program, Můj program a praktické informace festivalu fungují i bez signálu.</p>
-      <p lang="en">You're offline. This page isn't saved on your device.</p>
-      <button onclick="history.length > 1 ? history.back() : (location.href = '/')">Zpět</button>
+      <p>Tahle stránka není uložená v telefonu. Program, Můj program, učitelé a praktické informace festivalu fungují i bez signálu, stejně jako detaily lekcí z tvého programu.</p>
+      <p lang="en">You're offline. This page isn't saved on your device. The festival program, My program, teachers and info work offline.</p>
+      <button id="program" hidden>Na program festivalu · Program</button>
+      <button onclick="history.length > 1 ? history.back() : (location.href = '/')">Zpět · Back</button>
     </main>
+    <script>
+      // Stránka se zobrazuje místo neuložené adresy festivalu (/slug/…) – nabídnout jeho program.
+      var slug = location.pathname.split("/")[1];
+      if (slug && slug !== "offline.html") {
+        var b = document.getElementById("program");
+        b.hidden = false;
+        b.onclick = function () { location.href = "/" + slug; };
+      }
+    </script>
   </body>
 </html>

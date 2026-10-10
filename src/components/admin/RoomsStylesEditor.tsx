@@ -37,7 +37,8 @@ function RoomsCard({ program }: { program: FestivalProgram }) {
       <ul className="divide-y divide-line">
         {rooms.map((r, i) => (
           <RoomRow
-            key={r.id}
+            // Po přejmenování se řádek načte znovu s názvem z databáze.
+            key={`${r.id}:${r.name}`}
             room={r}
             used={used.has(r.id)}
             pending={pending}
@@ -82,7 +83,11 @@ function RoomRow(props: {
         className={`${inputCls} flex-1`}
         value={name}
         onChange={(e) => setName(e.target.value)}
-        onBlur={() => name.trim() && name !== props.room.name && props.onRename(name)}
+        onBlur={() => {
+          // Prázdný název se neukládá – vrátí se původní.
+          if (!name.trim()) setName(props.room.name);
+          else if (name !== props.room.name) props.onRename(name);
+        }}
         aria-label={tr("Název místnosti", "Room name")}
       />
       <Button variant="ghost" onClick={props.onUp} disabled={!props.onUp || props.pending} aria-label={tr("Posunout nahoru", "Move up")}>

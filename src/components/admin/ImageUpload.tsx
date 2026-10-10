@@ -12,6 +12,7 @@ export function ImageUpload({
   maxSize,
   shape = "square",
   label,
+  onBusyChange,
 }: {
   value: string;
   onChange: (url: string) => void;
@@ -19,10 +20,16 @@ export function ImageUpload({
   maxSize: number;
   shape?: "square" | "wide" | "round";
   label?: string;
+  /** Formulář během nahrávání nemá jít uložit (uložila by se stará fotka). */
+  onBusyChange?: (busy: boolean) => void;
 }) {
   const { tr, locale } = useI18n();
   const input = useRef<HTMLInputElement>(null);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusyState] = useState(false);
+  const setBusy = (b: boolean) => {
+    setBusyState(b);
+    onBusyChange?.(b);
+  };
   const [error, setError] = useState<string | null>(null);
   const box = { square: "h-20 w-20 rounded-xl", wide: "h-16 w-48 rounded-xl", round: "h-20 w-20 rounded-full" }[shape];
 

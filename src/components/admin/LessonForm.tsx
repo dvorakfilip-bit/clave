@@ -53,7 +53,7 @@ export function LessonForm({
   }
 
   return (
-    <Modal title={lesson ? tr("Upravit lekci", "Edit class") : tr("Nová lekce", "New class")} onClose={onClose}>
+    <Modal title={lesson ? tr("Upravit lekci", "Edit class") : tr("Nová lekce", "New class")} onClose={onClose} busy={pending}>
       <form
         className="space-y-3"
         onSubmit={(e) => {

@@ -33,7 +33,7 @@ export function FestivalSettings({ festival, isLead }: { festival: Festival; isL
         className="grid gap-3 sm:grid-cols-2"
         onSubmit={(e) => {
           e.preventDefault();
-          run(() => updateFestival(festival.slug, f), () => setSaved(true));
+          run((confirmed) => updateFestival(festival.slug, f, confirmed), () => setSaved(true));
         }}
       >
         <Field label={tr("Název", "Name")}>

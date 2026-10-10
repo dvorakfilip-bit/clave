@@ -11,6 +11,7 @@ import { useI18n } from "@/lib/i18n";
  */
 export function useAction() {
   const router = useRouter();
+  const { tr } = useI18n();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -20,10 +21,24 @@ export function useAction() {
   ) {
     setError(null);
     startTransition(async () => {
-      let result = await action(false);
+      // Výpadek sítě nebo chyba serveru nesmí shodit celou stránku i s rozepsaným formulářem.
+      const call = async (confirmed: boolean): Promise<ActionResult<T>> => {
+        try {
+          return await action(confirmed);
+        } catch {
+          return {
+            ok: false,
+            error: tr(
+              "Nepodařilo se spojit se serverem. Zkontroluj připojení a zkus to znovu.",
+              "Couldn't reach the server. Check your connection and try again.",
+            ),
+          };
+        }
+      };
+      let result = await call(false);
       if (result.ok && result.warning) {
         if (!window.confirm(result.warning)) return;
-        result = await action(true);
+        result = await call(true);
       }
       if (!result.ok) {
         setError(result.error);
@@ -87,11 +102,15 @@ export function Card({ title, children, actions }: { title?: string; children: R
   );
 }
 
-/** Jednoduché modální okno (formuláře lekcí, párty…). */
-export function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+/**
+ * Jednoduché modální okno (formuláře lekcí, párty…). Během ukládání (`busy`) nejde zavřít,
+ * aby se neztratila případná chyba.
+ */
+export function Modal({ title, onClose, busy = false, children }: { title: string; onClose: () => void; busy?: boolean; children: React.ReactNode }) {
   const { tr } = useI18n();
+  const close = () => !busy && onClose();
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={close}>
       <div
         role="dialog"
         aria-label={title}
@@ -100,7 +119,7 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
       >
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold">{title}</h2>
-          <button onClick={onClose} className="px-2 text-xl text-muted" aria-label={tr("Zavřít", "Close")}>
+          <button onClick={close} disabled={busy} className="px-2 text-xl text-muted disabled:opacity-40" aria-label={tr("Zavřít", "Close")}>
             ×
           </button>
         </div>

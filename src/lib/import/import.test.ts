@@ -72,6 +72,29 @@ describe("kolize (jedna lekce v jednom sále a čase)", () => {
     expect(plan(t).errors).toBe(2);
   });
 
+  it("lekce zaškrtnutá ke smazání místo neblokuje", () => {
+    const t = copy(programToTable(p, "cs"));
+    const index = t.findIndex((r, i) => i > 1 && r[2] === t[1][2] && r[3] === t[1][3] && r[5] !== t[1][5]);
+    const occupiedId = t[index][0];
+    t[1][5] = t[index][5];
+    t.splice(index, 1);
+    const { rows } = parseTable(t, "cs");
+    const blocked = buildPlan(p, rows, [], "cs");
+    expect(blocked.errorCount).toBe(1);
+    expect(blocked.rows.flatMap((r) => r.errors).join(" ")).toMatch(/v souboru chybí/);
+    expect(buildPlan(p, rows, [], "cs", [occupiedId]).errorCount).toBe(0);
+  });
+
+  it("zrušená lekce místo neblokuje – lze dát náhradu", () => {
+    const t = copy(programToTable(p, "cs"));
+    const cancelled = p.lessons.find((l) => l.cancelled)!;
+    const row = t.find((r) => r[0] === cancelled.id)!;
+    t.push(["", "lekce", row[2], row[3], row[4], row[5], row[6], "Náhradní lekce", "", "1", "Ana Ruiz", "", ""]);
+    const result = plan(t);
+    expect(result.errors).toBe(0);
+    expect(result.created).toBe(1);
+  });
+
   it("workshop přes víc slotů koliduje s lekcí uvnitř", () => {
     const t = copy(programToTable(p, "cs"));
     t.push(["", "lekce", "2027-07-06", "11:30", "13:40", "Sál A", "Salsa", "Dlouhý workshop", "", "1", "Ana Ruiz", "", ""]);

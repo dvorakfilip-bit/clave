@@ -1,11 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { FilterIcon, MoonIcon } from "@/components/icons";
 import { LevelDots } from "@/components/LevelDots";
+import { layoutGrid } from "@/lib/grid";
 import { useI18n } from "@/lib/i18n";
 import { crossesMidnight, formatDay } from "@/lib/time";
-import type { Lesson, TimeSlot } from "@/lib/types";
+import type { TimeSlot } from "@/lib/types";
 import { HeartButton } from "./HeartButton";
 import { Badge, LessonCard } from "./LessonCard";
 import { ChangesBanner } from "./ChangesBanner";
@@ -95,21 +97,12 @@ function useScrollToNow(slots: TimeSlot[], isLive: (s: string, e: string) => boo
 }
 
 function GridView() {
-  const { program, slots, lessons, matches, lessonStart, lessonEnd, isLive, dayId } = useDayData();
-  const { t } = useI18n();
+  const { program, slots, lessons, matches, lessonStart, lessonEnd, isLive, dayId, base } = useDayData();
+  const { t, pick } = useI18n();
   const setRef = useScrollToNow(slots, isLive, dayId);
   const rooms = [...program.rooms].sort((a, b) => a.position - b.position);
-  const slotIndex = new Map(slots.map((s, i) => [s.id, i]));
-
   // Lekce podle počátečního slotu a místnosti; buňky pod vícehodinovou lekcí se přeskočí.
-  const startAt = new Map<string, Lesson>();
-  const covered = new Set<string>();
-  for (const l of lessons) {
-    const from = slotIndex.get(l.startSlotId) ?? 0;
-    const to = slotIndex.get(l.endSlotId) ?? from;
-    startAt.set(`${from}:${l.roomId}`, l);
-    for (let i = from + 1; i <= to; i++) covered.add(`${i}:${l.roomId}`);
-  }
+  const { cells, covered } = layoutGrid(lessons, slots);
 
   return (
     <div className="overflow-x-auto px-2 py-3">
@@ -139,19 +132,30 @@ function GridView() {
             ...rooms.map((room, ri) => {
               const key = `${si}:${room.id}`;
               if (covered.has(key)) return null;
-              const lesson = startAt.get(key);
+              const cell = cells.get(key);
               const style = { gridRow: si + 2, gridColumn: ri + 2 } as React.CSSProperties;
-              if (!lesson) {
+              if (!cell) {
                 return <div key={key} style={style} className="min-h-[92px] rounded-lg border border-dashed border-line" />;
               }
-              const span = (slotIndex.get(lesson.endSlotId) ?? si) - si + 1;
+              const { lesson, replaced } = cell;
               return (
-                <div key={key} style={{ ...style, gridRow: `${si + 2} / span ${span}` }} className="min-h-[92px]">
-                  <LessonCard
-                    lesson={lesson}
-                    live={isLive(lessonStart(lesson), lessonEnd(lesson))}
-                    dimmed={!matches(lesson)}
-                  />
+                <div key={key} style={{ ...style, gridRow: `${si + 2} / span ${cell.span}` }} className="flex min-h-[92px] flex-col gap-1">
+                  <div className="flex-1">
+                    <LessonCard
+                      lesson={lesson}
+                      live={isLive(lessonStart(lesson), lessonEnd(lesson))}
+                      dimmed={!matches(lesson)}
+                    />
+                  </div>
+                  {replaced.map((r) => (
+                    <Link
+                      key={r.id}
+                      href={`${base}/lekce/${r.id}`}
+                      className="truncate rounded-md border border-line px-2 py-0.5 text-[10px] text-muted"
+                    >
+                      <span className="font-semibold uppercase">{t("cancelled")}:</span> <span className="line-through">{pick(r.titleCs, r.titleEn)}</span>
+                    </Link>
+                  ))}
                 </div>
               );
             }),

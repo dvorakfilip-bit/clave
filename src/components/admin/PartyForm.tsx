@@ -24,7 +24,7 @@ export function PartyForm({ program, dayId, party, onClose }: { program: Festiva
   });
 
   return (
-    <Modal title={party ? tr("Upravit párty", "Edit party") : tr("Nová párty", "New party")} onClose={onClose}>
+    <Modal title={party ? tr("Upravit párty", "Edit party") : tr("Nová párty", "New party")} onClose={onClose} busy={pending}>
       <form
         className="grid grid-cols-2 gap-3"
         onSubmit={(e) => {

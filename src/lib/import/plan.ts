@@ -1,5 +1,5 @@
 import { overlaps, span } from "@/lib/time";
-import type { FestivalProgram, Locale } from "@/lib/types";
+import type { FestivalProgram, Locale, TimeSlot } from "@/lib/types";
 import { type ImportRow, sameName } from "./format";
 
 export type RowAction = "create" | "update" | "unchanged" | "error";
@@ -29,10 +29,29 @@ export interface ImportPlan {
 export const STYLE_PALETTE = ["#E45756", "#3E9C4A", "#3F72AF", "#E08A1E", "#8E5BB5", "#1E9E9A", "#C2185B", "#7A6A2E"];
 
 /**
+ * Najde sloty pro lekci od–do: přesný slot, nebo první a poslední slot rozsahu.
+ * Stejně se hledá v náhledu i při ukládání, aby náhled nesliboval něco, co pak selže.
+ */
+export function resolveSlots(slots: TimeSlot[], dayId: string, start: string, end: string) {
+  const day = slots.filter((s) => s.dayId === dayId);
+  const exact = day.find((s) => s.startsAt === start && s.endsAt === end);
+  const startSlot = exact ?? day.filter((s) => s.startsAt === start && s.endsAt <= end).sort((a, b) => a.endsAt.localeCompare(b.endsAt))[0];
+  const endSlot = exact ?? day.filter((s) => s.endsAt === end && s.startsAt >= start).sort((a, b) => b.startsAt.localeCompare(a.startsAt))[0];
+  return { startSlot, endSlot };
+}
+
+/**
  * Porovná řádky importu se stávajícím programem: co vznikne, co se změní, co chybí
  * a co je špatně. Používá se pro náhled i pro samotné provedení (PRD 5.4.1).
+ * `deleteIds` – lekce, které organizátor zaškrtl ke smazání; s nimi se kolize nehlídá.
  */
-export function buildPlan(p: FestivalProgram, rows: ImportRow[], platformTeachers: { id: string; name: string }[], locale: Locale): ImportPlan {
+export function buildPlan(
+  p: FestivalProgram,
+  rows: ImportRow[],
+  platformTeachers: { id: string; name: string }[],
+  locale: Locale,
+  deleteIds: string[] = [],
+): ImportPlan {
   const tr = (cs: string, en: string) => (locale === "en" ? en : cs);
   const dayByDate = new Map(p.days.map((d) => [d.date, d]));
   const dateByDay = new Map(p.days.map((d) => [d.id, d.date]));
@@ -77,10 +96,8 @@ export function buildPlan(p: FestivalProgram, rows: ImportRow[], platformTeacher
       }
       const day = dayByDate.get(row.date);
       if (day && row.start && row.end) {
-        const daySlots = p.slots.filter((s) => s.dayId === day.id);
-        const hasStart = daySlots.some((s) => s.startsAt === row.start);
-        const hasEnd = daySlots.some((s) => s.endsAt === row.end);
-        if (!hasStart || !hasEnd) newSlots.set(`${row.date} ${row.start}-${row.end}`, { date: row.date, start: row.start, end: row.end });
+        const { startSlot, endSlot } = resolveSlots(p.slots, day.id, row.start, row.end);
+        if (!startSlot || !endSlot) newSlots.set(`${row.date} ${row.start}-${row.end}`, { date: row.date, start: row.start, end: row.end });
       }
     }
 
@@ -114,10 +131,13 @@ export function buildPlan(p: FestivalProgram, rows: ImportRow[], platformTeacher
   });
 
   // Kolize ve výsledném programu: dvě lekce ve stejné místnosti a čase (PRD 5.4).
+  // Zrušené lekce a lekce zaškrtnuté ke smazání místo neblokují.
   const importedIds = new Set(rows.map((r) => r.id).filter(Boolean));
+  const deleting = new Set(deleteIds);
+  const cancelled = new Set(p.lessons.filter((l) => l.cancelled).map((l) => l.id));
   const finalLessons: { key: string; date: string; room: string; range: [number, number]; ref: PlannedRow | null; label: string }[] = [];
   for (const l of p.lessons) {
-    if (importedIds.has(l.id)) continue;
+    if (importedIds.has(l.id) || deleting.has(l.id) || l.cancelled) continue;
     finalLessons.push({
       key: l.id,
       date: dateByDay.get(l.dayId) ?? "",
@@ -128,7 +148,7 @@ export function buildPlan(p: FestivalProgram, rows: ImportRow[], platformTeacher
     });
   }
   for (const pr of planned) {
-    if (pr.row.kind !== "lesson" || pr.action === "error") continue;
+    if (pr.row.kind !== "lesson" || pr.action === "error" || (pr.row.id && cancelled.has(pr.row.id))) continue;
     finalLessons.push({
       key: `line${pr.row.line}`,
       date: pr.row.date,
@@ -149,10 +169,12 @@ export function buildPlan(p: FestivalProgram, rows: ImportRow[], platformTeacher
       ]) {
         if (!x.ref) continue;
         x.ref.errors.push(
-          tr(
-            `ve stejné místnosti a čase je „${y.label}“${y.ref ? ` (řádek ${y.ref.row.line})` : ""}`,
-            `"${y.label}" is in the same room at the same time${y.ref ? ` (row ${y.ref.row.line})` : ""}`,
-          ),
+          y.ref
+            ? tr(`ve stejné místnosti a čase je „${y.label}“ (řádek ${y.ref.row.line})`, `"${y.label}" is in the same room at the same time (row ${y.ref.row.line})`)
+            : tr(
+                `ve stejné místnosti a čase je „${y.label}“ – v souboru chybí, zaškrtni ji níže ke smazání, nebo ji ve správě zruš`,
+                `"${y.label}" is in the same room at the same time and is missing from the file – check it below for deletion, or cancel it in the admin`,
+              ),
         );
         x.ref.action = "error";
       }

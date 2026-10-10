@@ -2,6 +2,7 @@
 
 import { updateTag } from "next/cache";
 import { type ActionResult, dbError } from "@/lib/admin/guard";
+import { removeImages } from "@/lib/admin/storage";
 import { festivalTag } from "@/lib/program";
 import { m } from "@/lib/server-locale";
 import { createServerSupabase } from "@/lib/supabase/server";
@@ -37,6 +38,47 @@ export async function updateMyTeacherProfile(input: { name: string; bioCs: strin
     .single();
   if (error) return { ok: false, error: await dbError(error) };
   await refreshFestivals(db, data.id);
+  return { ok: true };
+}
+
+/**
+ * Smazání účtu (PRD 6.5): nejdřív fotky učitele z úložiště, pak data v databázi,
+ * nakonec obnovení cache festivalů, kde měl medailonek.
+ */
+export async function deleteMyAccount(): Promise<ActionResult> {
+  const db = await createServerSupabase();
+  const {
+    data: { user },
+  } = await db.auth.getUser();
+  if (!user) return { ok: false, error: await m("Nejsi přihlášený.", "You're not signed in.") };
+
+  // Jediný hlavní organizátor účet smazat nemůže – ověřit dřív, než zmizí fotky.
+  const { data: leadOf } = await db.from("festival_members").select("festival_id").eq("user_id", user.id).eq("role", "lead_organizer");
+  for (const { festival_id } of leadOf ?? []) {
+    const { count } = await db
+      .from("festival_members")
+      .select("user_id", { count: "exact", head: true })
+      .eq("festival_id", festival_id)
+      .eq("role", "lead_organizer");
+    if ((count ?? 0) < 2) {
+      return {
+        ok: false,
+        error: await m(
+          "Jsi jediný hlavní organizátor festivalu. Nejdřív předej roli někomu jinému.",
+          "You're the only lead organizer of this festival. Hand the role over to someone else first.",
+        ),
+      };
+    }
+  }
+
+  // Fotky se mažou, dokud je uživatel učitelem – po smazání účtu by k nim neměl oprávnění.
+  const { data } = await db.rpc("my_teacher_data");
+  const teacher = (data ?? { images: [], slugs: [] }) as { images: string[]; slugs: string[] };
+  await removeImages(db, teacher.images);
+  const { error } = await db.rpc("delete_my_account");
+  if (error) return { ok: false, error: await dbError(error) };
+  for (const slug of teacher.slugs) updateTag(festivalTag(slug));
+  await db.auth.signOut();
   return { ok: true };
 }
 

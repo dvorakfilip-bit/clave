@@ -1,14 +1,23 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useI18n } from "@/lib/i18n";
 import { formatRange } from "@/lib/time";
 import type { FestivalSummary } from "@/lib/types";
 
 export function FestivalList({ festivals }: { festivals: FestivalSummary[] }) {
   const { t, locale } = useI18n();
-  const current = festivals.filter((f) => f.status === "published").sort((a, b) => a.startDate.localeCompare(b.startDate));
-  const archived = festivals.filter((f) => f.status === "archived");
+  // Dnešní datum je známé až v prohlížeči (stránka je cachovaná pro všechny).
+  const [today, setToday] = useState<string | null>(null);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- datum zařízení
+    setToday(new Date().toLocaleDateString("sv-SE"));
+  }, []);
+  // Skončený festival patří do archivu, i když ho organizátor ještě nepřepnul.
+  const ended = (f: FestivalSummary) => f.status === "archived" || (f.status === "published" && today !== null && f.endDate < today);
+  const current = festivals.filter((f) => f.status === "published" && !ended(f)).sort((a, b) => a.startDate.localeCompare(b.startDate));
+  const archived = festivals.filter(ended).sort((a, b) => b.startDate.localeCompare(a.startDate));
 
   if (!festivals.length) return <p className="text-muted">{t("noFestivals")}</p>;
 

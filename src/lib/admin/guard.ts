@@ -26,6 +26,10 @@ const DB_MESSAGES_EN: Record<string, string> = {
   "Tento účet už má profil učitele": "This account already has a teacher profile",
   "Profil učitele už je propojený s jiným účtem": "The teacher profile is already linked to another account",
   "Nedostatečná oprávnění": "Insufficient permissions",
+  "Ve slotu jsou lekce": "The time slot has classes",
+  "Slot s lekcemi nelze přesunout na jiný den": "A time slot with classes can't be moved to another day",
+  "Profil učitele používá i jiný festival – se svým účtem ho propojit nemůžeš":
+    "This teacher profile is also used by another festival – you can't link it to your own account",
   "Jsi jediný hlavní organizátor festivalu. Nejdřív předej roli někomu jinému.":
     "You're the only lead organizer of this festival. Hand the role over to someone else first.",
 };
@@ -33,6 +37,9 @@ const DB_MESSAGES_EN: Record<string, string> = {
 /** Srozumitelné chybové hlášky z Postgresu. */
 export async function dbError(e: PostgrestError | null): Promise<string> {
   if (!e) return m("Neznámá chyba", "Unknown error");
+  // Vlastní hlášky z databáze mají přednost před obecnými podle kódu chyby.
+  const en = DB_MESSAGES_EN[e.message];
+  if (en) return m(e.message, en);
   if (e.code === "23503") {
     return m(
       "Položku nelze smazat, protože se používá (např. v lekcích).",
@@ -41,17 +48,18 @@ export async function dbError(e: PostgrestError | null): Promise<string> {
   }
   if (e.code === "23505") return m("Taková položka už existuje.", "This item already exists.");
   if (e.code === "42501") return m("Na tuto akci nemáš oprávnění.", "You don't have permission for this action.");
-  const en = DB_MESSAGES_EN[e.message];
-  return en ? m(e.message, en) : e.message;
+  return e.message;
 }
 
 /**
- * Spustí akci nad festivalem jako přihlášený organizátor. Oprávnění hlídá RLS v databázi;
- * po úspěchu se obnoví cache veřejného programu.
+ * Spustí akci nad festivalem jako přihlášený organizátor. Oprávnění hlídá RLS v databázi.
+ * Po akci se obnoví cache veřejného programu – i po chybě, protože část změn už mohla
+ * proběhnout (např. částečný import). Jen čtecí akce cache nechají (`readOnly`).
  */
 export async function withFestival<T>(
   slug: string,
   fn: (ctx: FestivalCtx) => Promise<ActionResult<T>>,
+  { readOnly = false } = {},
 ): Promise<ActionResult<T>> {
   const db = await createServerSupabase();
   const {
@@ -81,10 +89,12 @@ export async function withFestival<T>(
     },
   };
 
-  const result = await fn(ctx);
-  if (result.ok) {
-    updateTag(festivalTag(slug));
-    updateTag(FESTIVALS_TAG);
+  try {
+    return await fn(ctx);
+  } finally {
+    if (!readOnly) {
+      updateTag(festivalTag(slug));
+      updateTag(FESTIVALS_TAG);
+    }
   }
-  return result;
 }

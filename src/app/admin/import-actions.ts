@@ -3,7 +3,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { type ActionResult, dbError, withFestival } from "@/lib/admin/guard";
 import { type ImportRow, sameName } from "@/lib/import/format";
-import { buildPlan, type ImportPlan, STYLE_PALETTE } from "@/lib/import/plan";
+import { buildPlan, type ImportPlan, resolveSlots, STYLE_PALETTE } from "@/lib/import/plan";
 import { csCount } from "@/lib/plural";
 import { loadProgram } from "@/lib/program";
 import { getLocale, m } from "@/lib/server-locale";
@@ -18,12 +18,16 @@ async function platformTeachers(db: SupabaseClient) {
 const enCount = (n: number, one: string, other: string) => `${n} ${n === 1 ? one : other}`;
 
 /** Náhled importu – nic se neukládá (PRD 5.4.1). */
-export async function previewImport(slug: string, rows: ImportRow[]): Promise<ActionResult<ImportPlan>> {
-  return withFestival<ImportPlan>(slug, async ({ db }) => {
-    const program = await loadProgram(db, slug);
-    if (!program) return { ok: false, error: await m("Festival nenalezen.", "Festival not found.") };
-    return { ok: true, data: buildPlan(program, rows, await platformTeachers(db), await getLocale()) };
-  });
+export async function previewImport(slug: string, rows: ImportRow[], deleteIds: string[] = []): Promise<ActionResult<ImportPlan>> {
+  return withFestival<ImportPlan>(
+    slug,
+    async ({ db }) => {
+      const program = await loadProgram(db, slug);
+      if (!program) return { ok: false, error: await m("Festival nenalezen.", "Festival not found.") };
+      return { ok: true, data: buildPlan(program, rows, await platformTeachers(db), await getLocale(), deleteIds) };
+    },
+    { readOnly: true },
+  );
 }
 
 /**
@@ -35,7 +39,7 @@ export async function applyImport(slug: string, rows: ImportRow[], deleteIds: st
     const locale = await getLocale();
     let program = await loadProgram(db, slug);
     if (!program) return { ok: false, error: await m("Festival nenalezen.", "Festival not found.") };
-    const plan = buildPlan(program, rows, await platformTeachers(db), locale);
+    const plan = buildPlan(program, rows, await platformTeachers(db), locale, deleteIds);
     if (plan.errorCount) {
       return {
         ok: false,
@@ -50,7 +54,7 @@ export async function applyImport(slug: string, rows: ImportRow[], deleteIds: st
     if (plan.newRooms.length) {
       const { error } = await db
         .from("rooms")
-        .insert(plan.newRooms.map((name, i) => ({ festival_id: festivalId, name, position: program!.rooms.length + i })));
+        .insert(plan.newRooms.map((name, i) => ({ festival_id: festivalId, name, position: nextPosition(program!.rooms) + i })));
       if (error) return { ok: false, error: await dbError(error) };
     }
     if (plan.newStyles.length) {
@@ -133,21 +137,13 @@ export async function applyImport(slug: string, rows: ImportRow[], deleteIds: st
   });
 }
 
-function resolveSlots(program: FestivalProgram, dayId: string, start: string, end: string) {
-  const slots = program.slots.filter((s) => s.dayId === dayId);
-  const startSlot =
-    slots.find((s) => s.startsAt === start && s.endsAt === end) ??
-    slots.filter((s) => s.startsAt === start && s.endsAt <= end).sort((a, b) => a.endsAt.localeCompare(b.endsAt))[0];
-  const endSlot =
-    slots.find((s) => s.startsAt === start && s.endsAt === end) ??
-    slots.filter((s) => s.endsAt === end && s.startsAt >= start).sort((a, b) => b.startsAt.localeCompare(a.startsAt))[0];
-  return { startSlot, endSlot };
-}
+/** Pozice na konec seznamu (po smazání může být v číslování mezera). */
+const nextPosition = (items: { position: number }[]) => Math.max(-1, ...items.map((i) => i.position)) + 1;
 
 async function saveLessonRow(db: SupabaseClient, festivalId: string, program: FestivalProgram, row: ImportRow): Promise<string | null> {
   const dayId = program.days.find((d) => d.date === row.date)?.id;
   if (!dayId) return m("neznámý den", "unknown day");
-  const { startSlot, endSlot } = resolveSlots(program, dayId, row.start, row.end);
+  const { startSlot, endSlot } = resolveSlots(program.slots, dayId, row.start, row.end);
   const room = program.rooms.find((r) => sameName(r.name, row.room));
   const style = row.style ? program.styles.find((s) => sameName(s.name, row.style)) : undefined;
   const teacherIds = row.teachers.map((n) => program.teachers.find((t) => sameName(t.name, n))?.id).filter((x): x is string => Boolean(x));
@@ -179,7 +175,11 @@ async function saveLessonRow(db: SupabaseClient, festivalId: string, program: Fe
   if (removed.length) await db.from("lesson_teachers").delete().eq("lesson_id", id).in("teacher_profile_id", removed);
   if (added.length) {
     const { error } = await db.from("lesson_teachers").insert(added.map((t) => ({ lesson_id: id, teacher_profile_id: t })));
-    if (error) return await dbError(error);
+    if (error) {
+      // Nová lekce bez učitelů by blokovala sál a opakovaný pokus – raději ji smazat.
+      if (!row.id) await db.from("lessons").delete().eq("id", id);
+      return await dbError(error);
+    }
   }
   return null;
 }
@@ -282,9 +282,10 @@ export async function copyFromFestival(slug: string, sourceSlug: string, withPro
 
     let lessonCount = 0;
     if (withProgram) {
+      // Zrušené lekce a párty se do nového ročníku nekopírují.
       for (const l of source.lessons) {
         const dayId = dayMap.get(l.dayId);
-        if (!dayId) continue;
+        if (!dayId || l.cancelled) continue;
         const { data, error } = await db
           .from("lessons")
           .insert({
@@ -304,14 +305,15 @@ export async function copyFromFestival(slug: string, sourceSlug: string, withPro
           .single();
         if (error) return { ok: false, error: await dbError(error) };
         if (l.teacherIds.length) {
-          await db.from("lesson_teachers").insert(l.teacherIds.map((t) => ({ lesson_id: data.id, teacher_profile_id: t })));
+          const { error: teacherError } = await db.from("lesson_teachers").insert(l.teacherIds.map((t) => ({ lesson_id: data.id, teacher_profile_id: t })));
+          if (teacherError) return { ok: false, error: await dbError(teacherError) };
         }
         lessonCount++;
       }
       for (const x of source.parties) {
         const dayId = dayMap.get(x.dayId);
-        if (!dayId) continue;
-        await db.from("parties").insert({
+        if (!dayId || x.cancelled) continue;
+        const { error } = await db.from("parties").insert({
           festival_id: festivalId,
           day_id: dayId,
           starts_at: x.startsAt,
@@ -323,6 +325,7 @@ export async function copyFromFestival(slug: string, sourceSlug: string, withPro
           description_cs: x.descriptionCs,
           description_en: x.descriptionEn,
         });
+        if (error) return { ok: false, error: await dbError(error) };
       }
     }
 

@@ -1,7 +1,9 @@
 "use client";
 
 import type { User } from "@supabase/supabase-js";
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { deleteMyAccount } from "@/app/ucet/actions";
 import { useI18n } from "@/lib/i18n";
 import { createBrowserSupabase } from "@/lib/supabase/browser";
 import { overlaps, span } from "@/lib/time";
@@ -38,6 +40,8 @@ interface PersonalState {
 
 const Ctx = createContext<PersonalState | null>(null);
 const key = (r: ItemRef) => `${r.kind}:${r.id}`;
+/** Čas v ms; Postgres posílá mikrosekundy, které starší Safari neumí přečíst. */
+const toMs = (iso: string | undefined) => (iso ? Date.parse(iso.replace(/(\.\d{3})\d+/, "$1")) || 0 : 0);
 const supabaseConfigured = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL);
 
 /**
@@ -54,6 +58,34 @@ export function PersonalProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [isOrganizer, setIsOrganizer] = useState(false);
   const [isTeacher, setIsTeacher] = useState(false);
+  const router = useRouter();
+  const userId = user?.id;
+  // Zvýší se po návratu signálu nebo do aplikace – osobní data se načtou znovu.
+  const [reloadKey, setReloadKey] = useState(0);
+  // Počet kliknutí na srdíčko; načtení ze serveru, během kterého uživatel klikal, se zahodí.
+  const toggles = useRef(0);
+
+  // Po obnovení připojení a po návratu do aplikace načíst čerstvý program i osobní data (PRD 6.2).
+  useEffect(() => {
+    let last = Date.now();
+    const refresh = () => {
+      if (!navigator.onLine || Date.now() - last < 60_000) return;
+      last = Date.now();
+      router.refresh();
+      setReloadKey((k) => k + 1);
+    };
+    const onOnline = () => {
+      last = 0;
+      refresh();
+    };
+    const onVisible = () => document.visibilityState === "visible" && refresh();
+    window.addEventListener("online", onOnline);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener("online", onOnline);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [router]);
 
   useEffect(() => {
     if (!supabaseConfigured) return;
@@ -64,68 +96,68 @@ export function PersonalProvider({ children }: { children: React.ReactNode }) {
     return () => sub.subscription.unsubscribe();
   }, []);
 
+  // Závisí jen na ID uživatele – obnovení přihlášení (nový objekt User) nemá výběr načítat znovu.
   useEffect(() => {
-    if (!user) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- odhlášení vyprázdní výběr
+    /* eslint-disable react-hooks/set-state-in-effect -- odhlášení vyprázdní výběr, offline se použije uložený */
+    if (!userId) {
       setSelection(new Map());
+      setLastSeen(null);
       setIsOrganizer(false);
       setIsTeacher(false);
       return;
     }
     const db = createBrowserSupabase();
     let cancelled = false;
-    const storageKey = `clave.selection.${festivalId}.${user.id}`;
-    try {
-      const cached = localStorage.getItem(storageKey);
-      if (cached) setSelection(new Map(JSON.parse(cached) as [string, string][]));
-    } catch {}
+    const startedAt = toggles.current;
+    if (reloadKey === 0) {
+      try {
+        const cached = localStorage.getItem(`clave.selection.${festivalId}.${userId}`);
+        if (cached) setSelection(new Map(JSON.parse(cached) as [string, string][]));
+      } catch {}
+    }
+    /* eslint-enable react-hooks/set-state-in-effect */
     (async () => {
-      const [{ data: rows }, { data: visit }, { data: organizer }, { data: teacher }] = await Promise.all([
+      const [{ data: rows }, { data: seen }, { data: organizer }, { data: teacher }] = await Promise.all([
         db.rpc("my_selections", { fid: festivalId }),
-        db.from("festival_visits").select("last_seen_at").eq("festival_id", festivalId).maybeSingle(),
+        // První návštěva se zapíše teď (změny se počítají až od ní); čas určuje server.
+        db.rpc("touch_festival_visit", { fid: festivalId, only_if_missing: true }),
         db.rpc("is_organizer", { fid: festivalId }),
-        db.from("teacher_profiles").select("id").eq("user_id", user.id).maybeSingle(),
+        db.from("teacher_profiles").select("id").eq("user_id", userId).maybeSingle(),
       ]);
       if (cancelled) return;
       setIsOrganizer(Boolean(organizer));
       setIsTeacher(Boolean(teacher));
+      if (seen) setLastSeen(seen as string);
+      // Bez signálu, nebo když uživatel mezitím klikal, zůstane výběr z telefonu.
+      if (!rows || toggles.current !== startedAt) return;
       const map = new Map<string, string>();
-      for (const r of (rows ?? []) as { lesson_id: string | null; party_id: string | null; created_at: string }[]) {
+      for (const r of rows as { lesson_id: string | null; party_id: string | null; created_at: string }[]) {
         map.set(r.lesson_id ? `lesson:${r.lesson_id}` : `party:${r.party_id}`, r.created_at);
       }
-      if (!rows) return; // bez signálu zůstane uložený výběr
       setSelection(map);
-      if (visit) {
-        setLastSeen(visit.last_seen_at);
-      } else {
-        // První návštěva – změny se počítají až od teď.
-        const now = new Date().toISOString();
-        setLastSeen(now);
-        await db.from("festival_visits").upsert({ user_id: user.id, festival_id: festivalId, last_seen_at: now });
-      }
     })();
     return () => {
       cancelled = true;
     };
-  }, [user, festivalId]);
+  }, [userId, festivalId, reloadKey]);
 
   // Osobní výběr se drží i v telefonu, aby Můj program fungoval offline (PRD 6.2).
   useEffect(() => {
-    if (!user) return;
+    if (!userId) return;
     try {
-      localStorage.setItem(`clave.selection.${festivalId}.${user.id}`, JSON.stringify([...selection]));
+      localStorage.setItem(`clave.selection.${festivalId}.${userId}`, JSON.stringify([...selection]));
     } catch {}
-  }, [selection, user, festivalId]);
+  }, [selection, userId, festivalId]);
 
   const timeOf = useCallback(
-    (ref: ItemRef): { dayId: string; range: [number, number] } | null => {
+    (ref: ItemRef): { dayId: string; range: [number, number]; cancelled: boolean } | null => {
       if (ref.kind === "lesson") {
         const l = program.lessons.find((x) => x.id === ref.id);
         if (!l || !slotById.get(l.startSlotId)) return null;
-        return { dayId: l.dayId, range: span(lessonStart(l), lessonEnd(l)) };
+        return { dayId: l.dayId, range: span(lessonStart(l), lessonEnd(l)), cancelled: l.cancelled };
       }
       const p = program.parties.find((x) => x.id === ref.id);
-      return p ? { dayId: p.dayId, range: span(p.startsAt, p.endsAt) } : null;
+      return p ? { dayId: p.dayId, range: span(p.startsAt, p.endsAt), cancelled: p.cancelled } : null;
     },
     [program, slotById, lessonStart, lessonEnd],
   );
@@ -143,12 +175,13 @@ export function PersonalProvider({ children }: { children: React.ReactNode }) {
 
   const conflictsOf = useCallback(
     (ref: ItemRef) => {
+      // Zrušená lekce nebo párty s ničím nekoliduje.
       const me = timeOf(ref);
-      if (!me) return [];
+      if (!me || me.cancelled) return [];
       return selected.filter((other) => {
         if (key(other) === key(ref)) return false;
         const o = timeOf(other);
-        return o !== null && o.dayId === me.dayId && overlaps(o.range, me.range);
+        return o !== null && !o.cancelled && o.dayId === me.dayId && overlaps(o.range, me.range);
       });
     },
     [selected, timeOf],
@@ -158,9 +191,11 @@ export function PersonalProvider({ children }: { children: React.ReactNode }) {
     if (!lastSeen) return [];
     return selected.filter((ref) => {
       const item = ref.kind === "lesson" ? program.lessons.find((l) => l.id === ref.id) : program.parties.find((p) => p.id === ref.id);
-      const chosenAt = selection.get(key(ref)) ?? "";
       // Změna po poslední návštěvě a zároveň po tom, co si uživatel položku vybral.
-      return Boolean(item?.changedAt && item.changedAt > lastSeen && item.changedAt > chosenAt);
+      // Časy se porovnávají jako čísla – server a prohlížeč je zapisují v různém tvaru.
+      if (!item?.changedAt) return false;
+      const changedAt = toMs(item.changedAt);
+      return changedAt > toMs(lastSeen) && changedAt > toMs(selection.get(key(ref)));
     });
   }, [selected, selection, lastSeen, program]);
 
@@ -185,6 +220,7 @@ export function PersonalProvider({ children }: { children: React.ReactNode }) {
         const k = key(ref);
         const wasSelected = selection.has(k);
         const column = ref.kind === "lesson" ? "lesson_id" : "party_id";
+        toggles.current++;
         setError(null);
         setSelection((prev) => {
           const next = new Map(prev);
@@ -194,10 +230,15 @@ export function PersonalProvider({ children }: { children: React.ReactNode }) {
         });
         const db = createBrowserSupabase();
         const request = wasSelected
-          ? db.from("personal_selections").delete().eq("user_id", user.id).eq(column, ref.id)
-          : db.from("personal_selections").insert({ user_id: user.id, [column]: ref.id });
-        request.then(({ error: e }) => {
-          if (!e) return;
+          ? db.from("personal_selections").delete().eq("user_id", user.id).eq(column, ref.id).select("created_at")
+          : db.from("personal_selections").insert({ user_id: user.id, [column]: ref.id }).select("created_at");
+        request.then(({ data, error: e }) => {
+          if (!e) {
+            // Čas výběru podle serveru – porovnává se s časem změny lekce.
+            const created = data?.[0]?.created_at as string | undefined;
+            if (!wasSelected && created) setSelection((prev) => (prev.has(k) ? new Map(prev).set(k, created) : prev));
+            return;
+          }
           setError(t("offlineSave"));
           setSelection((prev) => {
             const next = new Map(prev);
@@ -209,21 +250,21 @@ export function PersonalProvider({ children }: { children: React.ReactNode }) {
       },
       acknowledgeChanges: () => {
         if (!user) return;
-        const now = new Date().toISOString();
-        setLastSeen(now);
-        createBrowserSupabase().from("festival_visits").upsert({ user_id: user.id, festival_id: festivalId, last_seen_at: now }).then();
+        setLastSeen(new Date().toISOString()); // hned schovat lištu, přesný čas doplní server
+        createBrowserSupabase()
+          .rpc("touch_festival_visit", { fid: festivalId })
+          .then(({ data }) => data && setLastSeen(data as string));
       },
       signOut: async () => {
         await createBrowserSupabase().auth.signOut();
       },
       deleteAccount: async () => {
-        const db = createBrowserSupabase();
-        const { error: e } = await db.rpc("delete_my_account");
-        if (e) {
-          setError(e.message);
+        const result = await deleteMyAccount();
+        if (!result.ok) {
+          setError(result.error);
           return false;
         }
-        await db.auth.signOut();
+        await createBrowserSupabase().auth.signOut();
         return true;
       },
     };

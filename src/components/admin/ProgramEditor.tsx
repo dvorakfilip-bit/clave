@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { LevelDots } from "@/components/LevelDots";
 import { useI18n } from "@/lib/i18n";
+import { layoutGrid } from "@/lib/grid";
 import { crossesMidnight, formatDayLong } from "@/lib/time";
 import type { FestivalProgram, Lesson, Party } from "@/lib/types";
 import { LessonForm } from "./LessonForm";
@@ -28,7 +29,6 @@ export function ProgramEditor({ program }: { program: FestivalProgram }) {
   const parties = program.parties.filter((p) => p.dayId === dayId);
   const styleById = new Map(program.styles.map((s) => [s.id, s]));
   const teacherById = new Map(program.teachers.map((t) => [t.id, t]));
-  const slotIndex = new Map(slots.map((s, i) => [s.id, i]));
 
   const missing = [
     !program.slots.length && { href: `${base}/casy`, label: tr("časové sloty", "time slots") },
@@ -55,14 +55,7 @@ export function ProgramEditor({ program }: { program: FestivalProgram }) {
     );
   }
 
-  const startAt = new Map<string, Lesson>();
-  const covered = new Set<string>();
-  for (const l of lessons) {
-    const from = slotIndex.get(l.startSlotId) ?? 0;
-    const to = slotIndex.get(l.endSlotId) ?? from;
-    startAt.set(`${from}:${l.roomId}`, l);
-    for (let i = from + 1; i <= to; i++) covered.add(`${i}:${l.roomId}`);
-  }
+  const { cells, covered } = layoutGrid(lessons, slots);
 
   return (
     <div className="space-y-4">
@@ -103,9 +96,9 @@ export function ProgramEditor({ program }: { program: FestivalProgram }) {
               ...rooms.map((room, ri) => {
                 const key = `${si}:${room.id}`;
                 if (covered.has(key)) return null;
-                const lesson = startAt.get(key);
+                const cell = cells.get(key);
                 const pos = { gridRow: si + 2, gridColumn: ri + 2 };
-                if (!lesson) {
+                if (!cell) {
                   return (
                     <button
                       key={key}
@@ -118,14 +111,13 @@ export function ProgramEditor({ program }: { program: FestivalProgram }) {
                     </button>
                   );
                 }
+                const { lesson, replaced } = cell;
                 const style = lesson.styleId ? styleById.get(lesson.styleId) : undefined;
-                const span = (slotIndex.get(lesson.endSlotId) ?? si) - si + 1;
                 return (
+                  <div key={key} style={{ ...pos, gridRow: `${si + 2} / span ${cell.span}` }} className="flex min-h-[76px] flex-col gap-1">
                   <button
-                    key={key}
-                    style={{ ...pos, gridRow: `${si + 2} / span ${span}` }}
                     onClick={() => setEditing({ kind: "lesson", lesson })}
-                    className="min-h-[76px] rounded-lg border border-line bg-surface p-2 text-left text-xs"
+                    className="flex-1 rounded-lg border border-line bg-surface p-2 text-left text-xs"
                   >
                     <span className="flex items-center gap-1 text-[10px] text-muted">
                       <span className="h-2 w-2 rounded-full" style={{ background: style?.color ?? "#999" }} />
@@ -138,6 +130,25 @@ export function ProgramEditor({ program }: { program: FestivalProgram }) {
                       {lesson.cancelled && <span className="text-[10px] font-semibold uppercase text-highlight">{tr("Zrušeno", "Cancelled")}</span>}
                     </span>
                   </button>
+                  {replaced.map((r) => (
+                    <button
+                      key={r.id}
+                      onClick={() => setEditing({ kind: "lesson", lesson: r })}
+                      className="truncate rounded-md border border-line px-2 py-0.5 text-left text-[10px] text-muted"
+                    >
+                      <span className="font-semibold uppercase">{tr("Zrušeno", "Cancelled")}:</span> <span className="line-through">{r.titleCs ?? r.titleEn}</span>
+                    </button>
+                  ))}
+                  {lesson.cancelled && (
+                    // Na místo zrušené lekce lze dát náhradu.
+                    <button
+                      onClick={() => setEditing({ kind: "lesson", slotId: slot.id, roomId: room.id })}
+                      className="rounded-md border border-dashed border-line py-0.5 text-xs text-muted hover:bg-surface"
+                    >
+                      + {tr("Náhradní lekce", "Replacement class")}
+                    </button>
+                  )}
+                  </div>
                 );
               }),
             ])}

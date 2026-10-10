@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { nowInZone } from "@/lib/time";
 import type { FestivalProgram, Lesson, Room, Style, Teacher, TimeSlot } from "@/lib/types";
 
@@ -50,8 +50,12 @@ export function ProgramProvider({ program, children }: { program: FestivalProgra
   const [filters, setFilters] = useState<Filters>(emptyFilters);
   const [now, setNow] = useState<{ date: string; time: string } | null>(null);
 
-  // Den a čas závisí na hodinách zařízení – určíme je až v prohlížeči.
+  // Den a čas závisí na hodinách zařízení – určíme je až v prohlížeči. Den jen poprvé,
+  // obnovení programu (nová data ze serveru) nesmí uživatele přepnout zpátky na dnešek.
+  const initialized = useRef(false);
   useEffect(() => {
+    if (initialized.current) return;
+    initialized.current = true;
     /* eslint-disable react-hooks/set-state-in-effect -- hodnoty známé až v prohlížeči */
     setDayId(pickInitialDay(program));
     try {
@@ -59,6 +63,9 @@ export function ProgramProvider({ program, children }: { program: FestivalProgra
       if (stored === "grid" || stored === "list") setViewState(stored);
     } catch {}
     /* eslint-enable react-hooks/set-state-in-effect */
+  }, [program]);
+
+  useEffect(() => {
     const tick = () => {
       const n = nowInZone(program.festival.timezone);
       setNow(program.days.some((d) => d.date === n.date) ? n : null);

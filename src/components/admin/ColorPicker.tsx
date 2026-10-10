@@ -58,7 +58,8 @@ export function ColorPicker({ value, onChange, label }: { value: string; onChang
             {tr("Kód", "Code")}
             <HexColorInput
               color={valid}
-              onChange={(c) => onChange(c.toUpperCase())}
+              // Jen celý kód #RRGGBB – zkrácený tvar by přepsal pole uprostřed psaní.
+              onChange={(c) => c.length === 7 && onChange(c.toUpperCase())}
               prefixed
               className="w-full rounded-lg border border-line bg-page px-2 py-1.5 font-mono text-sm text-ink"
             />

@@ -16,7 +16,19 @@ export function SlotsEditor({ program }: { program: FestivalProgram }) {
   const { run, pending, error } = useAction();
   const { locale, tr } = useI18n();
   const slots = program.slots.filter((s) => s.dayId === dayId).sort((a, b) => a.startsAt.localeCompare(b.startsAt));
-  const used = new Set(program.lessons.flatMap((l) => [l.startSlotId, l.endSlotId]));
+  // Slot je obsazený, i když je uprostřed vícehodinové lekce.
+  const slotById = new Map(program.slots.map((s) => [s.id, s]));
+  const used = new Set(
+    program.slots
+      .filter((s) =>
+        program.lessons.some((l) => {
+          const start = slotById.get(l.startSlotId);
+          const end = slotById.get(l.endSlotId);
+          return l.dayId === s.dayId && start && end && start.startsAt <= s.startsAt && end.endsAt >= s.endsAt;
+        }),
+      )
+      .map((s) => s.id),
+  );
 
   const [gen, setGen] = useState({ start: "10:00", minutes: 60, pause: 10, count: 6 });
   const preview = generateSlotTimes(gen.start, gen.minutes, gen.pause, gen.count);
@@ -69,7 +81,7 @@ export function SlotsEditor({ program }: { program: FestivalProgram }) {
             className="mt-3 flex items-end gap-2"
             onSubmit={(e) => {
               e.preventDefault();
-              run(() => saveSlot(slug, { dayId, ...manual }), () => setManual({ startsAt: "", endsAt: "" }));
+              run((confirmed) => saveSlot(slug, { dayId, ...manual }, confirmed), () => setManual({ startsAt: "", endsAt: "" }));
             }}
           >
             <Field label={tr("Od", "From")}>
@@ -88,7 +100,7 @@ export function SlotsEditor({ program }: { program: FestivalProgram }) {
               className="grid grid-cols-2 gap-3"
               onSubmit={(e) => {
                 e.preventDefault();
-                run(() => generateSlots(slug, dayId, gen));
+                run((confirmed) => generateSlots(slug, dayId, gen, confirmed));
               }}
             >
               <Field label={tr("Začátek", "Start")}>

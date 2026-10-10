@@ -34,6 +34,8 @@ export function BrandingEditor({ program, isLead }: { program: FestivalProgram; 
   const [logoSquare, setLogoSquare] = useState(f.logoSquareUrl ?? "");
   const [banner, setBanner] = useState(f.bannerUrl ?? "");
   const [dark, setDark] = useState(false);
+  const [uploading, setUploading] = useState(0);
+  const trackUpload = (busy: boolean) => setUploading((n) => n + (busy ? 1 : -1));
   const folder = `festivals/${f.id}`;
   const warnings = paletteWarnings(colors, locale);
   const touch = <T,>(setter: (v: T) => void) => (v: T) => {
@@ -60,13 +62,13 @@ export function BrandingEditor({ program, isLead }: { program: FestivalProgram; 
         <Card title={tr("Logo a banner", "Logo and banner")}>
           <div className="space-y-4">
             <Field label={tr("Široké logo", "Wide logo")} hint={tr("Hlavička a úvod festivalu. Ideálně na průhledném pozadí.", "Header and festival intro. Ideally on a transparent background.")}>
-              <ImageUpload value={logoWide} onChange={touch(setLogoWide)} folder={folder} maxSize={800} shape="wide" />
+              <ImageUpload value={logoWide} onChange={touch(setLogoWide)} onBusyChange={trackUpload} folder={folder} maxSize={800} shape="wide" />
             </Field>
             <Field label={tr("Čtvercové logo", "Square logo")} hint={tr("Ikona na ploše telefonu a v seznamu festivalů.", "Icon on the phone's home screen and in the festival list.")}>
-              <ImageUpload value={logoSquare} onChange={touch(setLogoSquare)} folder={folder} maxSize={512} />
+              <ImageUpload value={logoSquare} onChange={touch(setLogoSquare)} onBusyChange={trackUpload} folder={folder} maxSize={512} />
             </Field>
             <Field label="Banner" hint={tr("Úvodní fotka nebo grafika festivalu (na šířku).", "Main festival photo or graphic (landscape).")}>
-              <ImageUpload value={banner} onChange={touch(setBanner)} folder={folder} maxSize={1600} shape="wide" />
+              <ImageUpload value={banner} onChange={touch(setBanner)} onBusyChange={trackUpload} folder={folder} maxSize={1600} shape="wide" />
             </Field>
           </div>
         </Card>
@@ -91,7 +93,7 @@ export function BrandingEditor({ program, isLead }: { program: FestivalProgram; 
                     </span>
                     <span className="w-16 shrink-0 text-right">
                       {i > 0 && i === colors.length - 1 && (
-                        <Button variant="ghost" type="button" className="!px-1" onClick={() => setColors(colors.slice(0, -1))}>
+                        <Button variant="ghost" type="button" className="!px-1" onClick={() => touch(setColors)(colors.slice(0, -1))}>
                           {tr("Odebrat", "Remove")}
                         </Button>
                       )}
@@ -110,7 +112,7 @@ export function BrandingEditor({ program, isLead }: { program: FestivalProgram; 
             })}
           </ul>
           {colors.length < 5 && (
-            <Button className="mt-3" type="button" onClick={() => setColors([...colors, colors.length === 3 ? "#FFFFFF" : colors.length === 4 ? "#1B1B1B" : colors[0]])}>
+            <Button className="mt-3" type="button" onClick={() => touch(setColors)([...colors, colors.length === 3 ? "#FFFFFF" : colors.length === 4 ? "#1B1B1B" : colors[0]])}>
               {tr("Přidat barvu", "Add color")}: {tr(ROLES[colors.length].name.cs, ROLES[colors.length].name.en).toLowerCase()}
             </Button>
           )}
@@ -142,7 +144,7 @@ export function BrandingEditor({ program, isLead }: { program: FestivalProgram; 
         <div className="flex items-center gap-3">
           <Button
             variant="primary"
-            disabled={pending}
+            disabled={pending || uploading > 0}
             onClick={() =>
               run(
                 () => updateBranding(f.slug, { colors, font, logoWideUrl: logoWide, logoSquareUrl: logoSquare, bannerUrl: banner }),

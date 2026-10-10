@@ -27,6 +27,7 @@ export function TeacherProfileForm({
   const { run, pending, error } = useAction();
   const [f, setF] = useState(profile);
   const [saved, setSaved] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const fmt = new Intl.DateTimeFormat(locale === "en" ? "en-GB" : "cs-CZ", { day: "numeric", month: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" });
 
   return (
@@ -50,7 +51,7 @@ export function TeacherProfileForm({
             <input className={inputCls} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} required />
           </Field>
           <Field label={tr("Fotka", "Photo")}>
-            <ImageUpload value={f.photoUrl} onChange={(url) => setF({ ...f, photoUrl: url })} folder={`teachers/${profileId}`} maxSize={600} shape="round" />
+            <ImageUpload value={f.photoUrl} onChange={(url) => setF({ ...f, photoUrl: url })} onBusyChange={setUploading} folder={`teachers/${profileId}`} maxSize={600} shape="round" />
           </Field>
           <Field label={tr("Popis (česky)", "Bio (Czech)")}>
             <textarea className={inputCls} rows={4} value={f.bioCs} onChange={(e) => setF({ ...f, bioCs: e.target.value })} />
@@ -60,7 +61,7 @@ export function TeacherProfileForm({
           </Field>
           <ErrorText error={error} />
           <div className="flex items-center gap-3">
-            <Button variant="primary" disabled={pending}>
+            <Button variant="primary" disabled={pending || uploading}>
               {tr("Uložit", "Save")}
             </Button>
             {saved && <span className="text-sm text-muted">{tr("Uloženo", "Saved")}</span>}

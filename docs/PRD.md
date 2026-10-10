@@ -97,6 +97,7 @@ Pravidla:
 
 **Zrušená lekce**
 - Zůstává v programu **přeškrtnutá se štítkem „Zrušeno“** (nemizí).
+- Neblokuje sál ani čas: organizátor na její místo může dát náhradní lekci. V mřížce je pak náhrada a pod ní poznámka „Zrušeno: …“; se zrušenou lekcí nic nekoliduje.
 
 **Sdílení**
 - Každá lekce i medailonek učitele má vlastní sdílitelný odkaz (např. do WhatsAppu); otevře přímo detail.
@@ -356,7 +357,7 @@ Pravidla:
 - **TimeSlot** – day_id, začátek, konec
 - **Room** – festival_id, název, pořadí
 - **Style** – festival_id, název, barva
-- **Lesson** – festival_id, start_slot_id, end_slot_id, room_id, style_id, název CZ/EN, level, popis CZ/EN, zrušeno (ano/ne), updated_at (sloty a místnost se nesmí překrývat s jinou lekcí)
+- **Lesson** – festival_id, start_slot_id, end_slot_id, room_id, style_id, název CZ/EN, level, popis CZ/EN, zrušeno (ano/ne), updated_at (sloty a místnost se nesmí překrývat s jinou nezrušenou lekcí)
 - **FestivalTeacher** – festival_id, teacher_profile_id, vlastní popis CZ/EN a fotka pro festival
 - **LessonTeacher** – lesson_id, teacher_profile_id
 - **InfoPage** – festival_id, pořadí, nadpis CZ/EN, obsah CZ/EN
