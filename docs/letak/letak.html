@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8" />
+<title>Clave – leták</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root { --red: #C8102E; --ink: #1B1B1B; --muted: #5f5f66; --page: #FBF8F3; --line: #E7E1D8; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1240px; height: 1754px; }
+  body { font-family: Poppins, system-ui, sans-serif; color: var(--ink); background: var(--page); overflow: hidden; position: relative; }
+
+  /* Hlavička */
+  header { position: relative; height: 690px; background: var(--red); color: #fff; padding: 72px 80px 0; overflow: hidden; }
+  header::after { content: ""; position: absolute; right: -180px; top: -180px; width: 640px; height: 640px; border-radius: 50%; background: rgba(255,255,255,.07); }
+  .brand { display: flex; align-items: center; gap: 22px; }
+  .logo { width: 92px; height: 92px; border-radius: 22px; background: #fff; display: flex; align-items: center; justify-content: center; }
+  .wordmark { font-size: 64px; font-weight: 800; letter-spacing: -1px; }
+  h1 { margin-top: 64px; font-size: 68px; line-height: 1.08; font-weight: 800; max-width: 640px; letter-spacing: -1px; }
+  .sub { margin-top: 26px; font-size: 27px; line-height: 1.45; max-width: 600px; opacity: .92; }
+  .chips { margin-top: 34px; display: flex; gap: 12px; flex-wrap: wrap; max-width: 620px; }
+  .chip { border: 2px solid rgba(255,255,255,.55); border-radius: 999px; padding: 8px 20px; font-size: 21px; font-weight: 500; }
+
+  /* Telefon */
+  .phone { position: absolute; right: 80px; top: 70px; width: 340px; height: 640px; border-radius: 56px; background: #141416; padding: 14px; box-shadow: 0 40px 80px rgba(0,0,0,.35); z-index: 2; }
+  .screen { width: 100%; height: 100%; border-radius: 44px; background: #FFF8EE; overflow: hidden; font-size: 13px; }
+  .bar { background: #0E6E8C; color: #fff; padding: 40px 18px 14px; display: flex; align-items: center; gap: 10px; }
+  .bar .fl { width: 30px; height: 30px; border-radius: 50%; background: #F2A541; }
+  .bar b { font-size: 16px; }
+  .days { display: flex; gap: 6px; padding: 10px 12px; background: #fff; border-bottom: 1px solid var(--line); }
+  .day { border: 1px solid var(--line); color: var(--muted); border-radius: 999px; padding: 4px 11px; font-size: 12px; }
+  .day.on { background: #0E6E8C; border-color: #0E6E8C; color: #fff; }
+  .grid { display: grid; grid-template-columns: 40px 1fr 1fr; gap: 6px; padding: 10px 10px 0; }
+  .rh { text-align: center; font-size: 11px; font-weight: 600; color: var(--muted); }
+  .t { font-size: 11px; color: var(--muted); padding-top: 4px; }
+  .t.now { color: #E4572E; font-weight: 700; }
+  .card { position: relative; border-radius: 10px; padding: 8px 8px 24px; min-height: 92px; }
+  .card .st { font-size: 10px; display: flex; align-items: center; gap: 4px; }
+  .card .st i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .card .ti { font-weight: 600; font-size: 12.5px; line-height: 1.25; margin-top: 3px; }
+  .card .te { font-size: 11px; }
+  .card .lv { position: absolute; left: 8px; bottom: 7px; display: flex; gap: 2px; }
+  .card .lv span { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid currentColor; }
+  .card .lv span.f { background: currentColor; }
+  .card .ht { position: absolute; right: 7px; bottom: 5px; font-size: 14px; color: #E4572E; }
+  .card .badge { position: absolute; right: 5px; top: 5px; background: #E4572E; color: #fff; font-size: 8.5px; font-weight: 700; border-radius: 4px; padding: 1px 4px; }
+  .card.live { outline: 2.5px solid #E4572E; }
+  .salsa { background: #FBE3E3; color: #7a2323; }
+  .bachata { background: #E0F0E2; color: #23502a; }
+  .kiz { background: #E2EAF5; color: #22385a; }
+  .zouk { background: #F1E6F7; color: #4a2a5e; }
+  .party { margin: 10px; border-radius: 10px; background: #FCEBD3; padding: 9px 11px; font-size: 12px; display: flex; gap: 8px; align-items: center; }
+  .tabs { position: absolute; left: 14px; right: 14px; bottom: 14px; border-radius: 0 0 44px 44px; background: #fff; border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(4, 1fr); text-align: center; font-size: 11px; color: var(--muted); padding: 12px 0 22px; }
+  .tabs b { color: #0E6E8C; }
+
+  /* Obsah */
+  main { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; padding: 70px 80px 0; }
+  section h2 { display: flex; align-items: center; gap: 14px; font-size: 34px; font-weight: 700; }
+  section h2 .dot { width: 46px; height: 46px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 24px; color: #fff; }
+  section .lead { margin: 12px 0 30px; font-size: 20px; color: var(--muted); }
+  ul { list-style: none; display: grid; gap: 26px; }
+  li { display: grid; grid-template-columns: 34px 1fr; gap: 10px; font-size: 21px; line-height: 1.4; }
+  li .b { margin-top: 9px; display: flex; gap: 3px; }
+  li .b span { width: 8px; height: 8px; border-radius: 50%; background: var(--red); }
+  li .b span + span { opacity: .45; }
+  li strong { font-weight: 600; }
+  .dancers .dot { background: var(--red); }
+  .orgs .dot { background: var(--ink); }
+  .orgs li .b span { background: var(--ink); }
+
+  /* Patička */
+  footer { position: absolute; left: 80px; right: 80px; bottom: 64px; display: flex; align-items: center; gap: 36px; padding: 30px 36px; border-radius: 28px; background: #fff; border: 2px solid var(--line); }
+  footer img { width: 150px; height: 150px; }
+  footer .cta { font-size: 32px; font-weight: 700; line-height: 1.2; }
+  footer .url { margin-top: 6px; font-size: 26px; color: var(--red); font-weight: 600; }
+  footer .small { margin-top: 10px; font-size: 16px; color: var(--muted); }
+</style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="logo">
+        <svg width="74" height="74" viewBox="0 0 100 100"><circle cx="16" cy="50" r="6.5" fill="#C8102E"/><circle cx="32" cy="50" r="6.5" fill="#C8102E"/><circle cx="56" cy="50" r="6.5" fill="#C8102E"/><circle cx="71" cy="50" r="6.5" fill="#C8102E"/><circle cx="86" cy="50" r="6.5" fill="#C8102E"/></svg>
+      </div>
+      <span class="wordmark">clave</span>
+    </div>
+    <h1>Program tanečního festivalu v&nbsp;mobilu</h1>
+    <p class="sub">Místo papírového rozpisu lekcí. Vždy aktuální, i&nbsp;bez signálu. Zdarma, bez reklam a&nbsp;bez instalace z&nbsp;obchodu.</p>
+    <div class="chips">
+      <span class="chip">Android i iPhone</span>
+      <span class="chip">Česky i anglicky</span>
+    </div>
+  </header>
+
+  <div class="phone">
+    <div class="screen" style="position:relative">
+      <div class="bar"><span class="fl"></span><b>Summer Salsa Fest</b></div>
+      <div class="days"><span class="day">čt 6.</span><span class="day on">pá 7.</span><span class="day">so 8.</span><span class="day">ne 9.</span></div>
+      <div class="grid">
+        <span></span><span class="rh">Sál A</span><span class="rh">Sál B</span>
+        <span class="t">10:00</span>
+        <div class="card salsa"><div class="st"><i style="background:#E45756"></i>Salsa</div><div class="ti">Shines a styling</div><div class="te">Ana Ruiz</div><div class="lv"><span class="f"></span><span class="f"></span><span></span></div><span class="ht">♥</span></div>
+        <div class="card bachata"><div class="st"><i style="background:#3E9C4A"></i>Bachata</div><div class="ti">Sensual základy</div><div class="te">Carla Dias</div><div class="lv"><span class="f"></span><span></span><span></span></div><span class="ht">♡</span></div>
+        <span class="t now">11:10<br/>● TEĎ</span>
+        <div class="card kiz live"><span class="badge">ZMĚNA</span><div class="st"><i style="background:#3F72AF"></i>Kizomba</div><div class="ti">Saída a vedení</div><div class="te">João Silva</div><div class="lv"><span class="f"></span><span class="f"></span><span class="f"></span></div><span class="ht">♥</span></div>
+        <div class="card salsa"><div class="st"><i style="background:#E45756"></i>Salsa</div><div class="ti">Rueda de casino</div><div class="te">Marco Pérez</div><div class="lv"><span class="f"></span><span></span><span></span></div><span class="ht">♡</span></div>
+        <span class="t">12:20</span>
+        <div class="card zouk"><div class="st"><i style="background:#8E5BB5"></i>Zouk</div><div class="ti">Pohyb hlavy</div><div class="te">Lia Santos</div><div class="lv"><span class="f"></span><span class="f"></span><span></span></div><span class="ht">♡</span></div>
+        <div class="card bachata"><div class="st"><i style="background:#3E9C4A"></i>Bachata</div><div class="ti">Footwork</div><div class="te">Carla Dias</div><div class="lv"><span class="f"></span><span class="f"></span><span></span></div><span class="ht">♥</span></div>
+      </div>
+      <div class="party">☾ <b>22:00</b> Uvítací párty · Beach bar</div>
+      <div class="tabs"><b>Program</b><span>Můj program</span><span>Učitelé</span><span>Více</span></div>
+    </div>
+  </div>
+
+  <main>
+    <section class="dancers">
+      <h2><span class="dot">♥</span>Pro tanečníky</h2>
+      <p class="lead">Stačí otevřít odkaz – nic se neinstaluje.</p>
+      <ul>
+        <li><span class="b"><span></span><span></span></span><span><strong>Celý program přehledně</strong> – mřížka čas × sál, barvy podle stylu a level lekce.</span></li>
+        <li><span class="b"><span></span><span></span></span><span><strong>Filtry</strong> podle stylu, sálu, učitele a levelu.</span></li>
+        <li><span class="b"><span></span><span></span></span><span><strong>Můj program</strong> – srdíčkem si poskládáš vlastní rozvrh. Aplikace upozorní, když se lekce překrývají.</span></li>
+        <li><span class="b"><span></span><span></span></span><span><strong>Žádné zmatky</strong> – přesunutá lekce dostane štítek „Změna“, zrušená „Zrušeno“.</span></li>
+        <li><span class="b"><span></span><span></span></span><span><strong>Funguje i bez signálu</strong> a dá se přidat na plochu jako aplikace.</span></li>
+        <li><span class="b"><span></span><span></span></span><span><strong>Medailonky učitelů</strong> a praktické info – areál, doprava, kontakty.</span></li>
+      </ul>
+    </section>
+
+    <section class="orgs">
+      <h2><span class="dot">✦</span>Pro organizátory</h2>
+      <p class="lead">Jedna správa pro celý festival, změny hned u všech.</p>
+      <ul>
+        <li><span class="b"><span></span><span></span></span><span><strong>Program snadno</strong> – časové sloty, sály, styly, učitelé, lekce i párty.</span></li>
+        <li><span class="b"><span></span><span></span></span><span><strong>Import z Excelu</strong> s náhledem před uložením, pomoc AI s převodem rozpisu a kopie z minulého ročníku.</span></li>
+        <li><span class="b"><span></span><span></span></span><span><strong>Hlídání kolizí</strong> – dvě lekce v jednom sále i učitel na dvou místech najednou.</span></li>
+        <li><span class="b"><span></span><span></span></span><span><strong>Vlastní vzhled</strong> – logo, barvy a písmo festivalu s kontrolou čitelnosti.</span></li>
+        <li><span class="b"><span></span><span></span></span><span><strong>Tým a učitelé</strong> – pozvi spoluorganizátory, učitelé si medailonek upravují sami.</span></li>
+        <li><span class="b"><span></span><span></span></span><span><strong>QR kód</strong> na plakáty a náramky, historie změn a denní zálohy.</span></li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>
+    <img src="qr.svg" alt="" />
+    <div>
+      <div class="cta">Vyzkoušej Clave</div>
+      <div class="url">clave-gilt.vercel.app</div>
+      <div class="small">Chcete Clave pro svůj festival? Napište: dvorakfilip@gmail.com<br/>Nekomerční projekt · vytvořeno s pomocí AI (Claude od Anthropic)</div>
+    </div>
+  </footer>
+</body>
+</html>
