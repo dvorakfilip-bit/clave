@@ -15,8 +15,9 @@ import { TeacherAvatar } from "@/components/festival/TeacherAvatar";
 import type { Invitation } from "@/lib/admin/data";
 import { csCount } from "@/lib/plural";
 import type { FestivalProgram, Teacher } from "@/lib/types";
+import { inviteText } from "@/lib/invite-text";
 import { ImageUpload } from "./ImageUpload";
-import { Button, Card, ErrorText, Field, inputCls, Modal, useAction } from "./ui";
+import { Button, Card, CopyButton, ErrorText, Field, inputCls, Modal, useAction } from "./ui";
 
 export interface TeacherBios {
   global: { name: string; photoUrl: string; bioCs: string; bioEn: string };
@@ -64,9 +65,12 @@ export function TeachersEditor({
                   <Button onClick={() => setEditing(t)}>Medailonek</Button>
                   {!linkedIds.includes(t.id) &&
                     (invitation ? (
-                      <Button variant="ghost" disabled={pending} onClick={() => run(() => revokeInvitation(slug, invitation.id))}>
-                        Zrušit pozvánku
-                      </Button>
+                      <>
+                        <CopyButton text={inviteText("teacher", program.festival.name, invitation.email)} label="Text pozvánky" variant="ghost" />
+                        <Button variant="ghost" disabled={pending} onClick={() => run(() => revokeInvitation(slug, invitation.id))}>
+                          Zrušit pozvánku
+                        </Button>
+                      </>
                     ) : (
                       <Button variant="ghost" onClick={() => setInviting(t)}>
                         Pozvat
@@ -95,7 +99,7 @@ export function TeachersEditor({
       {editing && bios[editing.id] && (
         <ProfileModal slug={slug} festivalId={program.festival.id} teacher={editing} bios={bios[editing.id]} linked={linkedIds.includes(editing.id)} onClose={() => setEditing(null)} />
       )}
-      {inviting && <InviteModal slug={slug} teacher={inviting} onClose={() => setInviting(null)} />}
+      {inviting && <InviteModal slug={slug} festivalName={program.festival.name} teacher={inviting} onClose={() => setInviting(null)} />}
     </div>
   );
 }
@@ -246,7 +250,7 @@ function ProfileModal({
   );
 }
 
-function InviteModal({ slug, teacher, onClose }: { slug: string; teacher: Teacher; onClose: () => void }) {
+function InviteModal({ slug, festivalName, teacher, onClose }: { slug: string; festivalName: string; teacher: Teacher; onClose: () => void }) {
   const { run, pending, error } = useAction();
   const [email, setEmail] = useState("");
   const [result, setResult] = useState<"linked" | "invited" | null>(null);
@@ -260,7 +264,11 @@ function InviteModal({ slug, teacher, onClose }: { slug: string; teacher: Teache
               ? `Účet ${email} byl propojen s profilem učitele.`
               : `Pozvánka je uložená. Jakmile se ${email} do Clave přihlásí (Google nebo e-mailem), profil se propojí automaticky.`}
           </p>
-          <Button onClick={onClose}>Zavřít</Button>
+          <p className="text-xs text-muted">Aplikace zatím neposílá e-maily – pošli učiteli text pozvánky sám (WhatsApp, e-mail…).</p>
+          <div className="flex gap-2">
+            <CopyButton text={inviteText("teacher", festivalName, email)} label="Zkopírovat text pozvánky" variant="primary" />
+            <Button onClick={onClose}>Zavřít</Button>
+          </div>
         </div>
       ) : (
         <form

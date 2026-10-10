@@ -15,6 +15,7 @@ export default async function OrganizersPage({ params }: PageProps<"/admin/[fest
   return (
     <OrganizersEditor
       slug={slug}
+      festivalName={program.festival.name}
       isLead={isLead}
       currentUserId={user.id}
       members={(members ?? []) as { user_id: string; display_name: string; email: string; role: "lead_organizer" | "organizer" }[]}

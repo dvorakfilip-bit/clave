@@ -3,19 +3,22 @@
 import { useState } from "react";
 import { inviteOrganizer, removeOrganizer, revokeInvitation, setOrganizerRole } from "@/app/admin/actions";
 import type { Invitation } from "@/lib/admin/data";
-import { Button, Card, ErrorText, Field, inputCls, useAction } from "./ui";
+import { inviteText } from "@/lib/invite-text";
+import { Button, Card, CopyButton, ErrorText, Field, inputCls, useAction } from "./ui";
 
 type Role = "lead_organizer" | "organizer";
 const ROLE: Record<Role, string> = { lead_organizer: "Hlavní organizátor", organizer: "Organizátor" };
 
 export function OrganizersEditor({
   slug,
+  festivalName,
   isLead,
   currentUserId,
   members,
   invitations,
 }: {
   slug: string;
+  festivalName: string;
   isLead: boolean;
   currentUserId: string;
   members: { user_id: string; display_name: string; email: string; role: Role }[];
@@ -24,7 +27,7 @@ export function OrganizersEditor({
   const { run, pending, error } = useAction();
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<Role>("organizer");
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{ text: string; email: string; role: Role } | null>(null);
 
   return (
     <div className="grid gap-4 md:grid-cols-[1fr_320px]">
@@ -71,14 +74,17 @@ export function OrganizersEditor({
           <Card title="Čekající pozvánky">
             <ul className="divide-y divide-line">
               {invitations.map((i) => (
-                <li key={i.id} className="flex items-center justify-between py-2 text-sm">
+                <li key={i.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
                   <span>
                     {i.email} <span className="text-xs text-muted">· {ROLE[i.role as Role]}</span>
                   </span>
                   {isLead && (
-                    <Button variant="ghost" disabled={pending} onClick={() => run(() => revokeInvitation(slug, i.id))}>
-                      Zrušit
-                    </Button>
+                    <span className="flex gap-1">
+                      <CopyButton text={inviteText(i.role, festivalName, i.email)} label="Zkopírovat text pozvánky" variant="ghost" />
+                      <Button variant="ghost" disabled={pending} onClick={() => run(() => revokeInvitation(slug, i.id))}>
+                        Zrušit
+                      </Button>
+                    </span>
                   )}
                 </li>
               ))}
@@ -97,11 +103,14 @@ export function OrganizersEditor({
               run(
                 () => inviteOrganizer(slug, email, role),
                 (r) => {
-                  setNotice(
-                    r === "added"
-                      ? `${email} už v Clave účet má – přidán rovnou.`
-                      : `Pozvánka uložena. Jakmile se ${email} přihlásí, dostane přístup automaticky.`,
-                  );
+                  setNotice({
+                    text:
+                      r === "added"
+                        ? `${email} už v Clave účet má – přidán rovnou.`
+                        : `Pozvánka uložena. Jakmile se ${email} přihlásí, dostane přístup automaticky.`,
+                    email,
+                    role,
+                  });
                   setEmail("");
                 },
               );
@@ -119,7 +128,13 @@ export function OrganizersEditor({
             <Button variant="primary" disabled={pending}>
               Přidat
             </Button>
-            {notice && <p className="text-sm text-muted">{notice}</p>}
+            {notice && (
+              <div className="space-y-2 rounded-lg bg-accent-soft p-3 text-sm">
+                <p>{notice.text}</p>
+                <p className="text-xs">Aplikace zatím neposílá e-maily – pošli mu text pozvánky sám (WhatsApp, e-mail…).</p>
+                <CopyButton text={inviteText(notice.role, festivalName, notice.email)} label="Zkopírovat text pozvánky" variant="primary" />
+              </div>
+            )}
           </form>
         </Card>
       ) : (

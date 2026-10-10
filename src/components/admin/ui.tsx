@@ -109,3 +109,25 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
 }
 
 export const LEVELS = [0, 0.5, 1, 1.5, 2, 2.5, 3];
+
+/** Tlačítko, které zkopíruje text do schránky a krátce potvrdí „Zkopírováno“. */
+export function CopyButton({ text, label = "Zkopírovat", variant = "secondary" }: { text: string; label?: string; variant?: "primary" | "secondary" | "ghost" }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <Button
+      type="button"
+      variant={variant}
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(text);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        } catch {
+          window.prompt("Zkopíruj text:", text);
+        }
+      }}
+    >
+      {copied ? "Zkopírováno" : label}
+    </Button>
+  );
+}
