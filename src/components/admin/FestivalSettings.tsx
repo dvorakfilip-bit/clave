@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { updateFestival } from "@/app/admin/actions";
 import type { Festival } from "@/lib/types";
+import { shortName } from "@/lib/short-name";
 import { TIMEZONES } from "./timezones";
 import { Button, Card, ErrorText, Field, inputCls, useAction } from "./ui";
 
@@ -11,6 +12,7 @@ export function FestivalSettings({ festival, isLead }: { festival: Festival; isL
   const [saved, setSaved] = useState(false);
   const [f, setF] = useState({
     name: festival.name,
+    shortName: festival.shortName ?? "",
     descriptionCs: festival.descriptionCs ?? "",
     descriptionEn: festival.descriptionEn ?? "",
     startDate: festival.startDate,
@@ -34,6 +36,9 @@ export function FestivalSettings({ festival, isLead }: { festival: Festival; isL
       >
         <Field label="Název">
           <input className={inputCls} value={f.name} onChange={set("name")} required />
+        </Field>
+        <Field label="Krátký název (pod ikonou)" hint={`Zobrazí se pod ikonou aplikace na ploše telefonu. Nevyplněno: „${shortName({ name: f.name, shortName: null })}“.`}>
+          <input className={inputCls} value={f.shortName} onChange={set("shortName")} maxLength={15} placeholder="CSSF 2027" />
         </Field>
         <Field
           label="Stav"

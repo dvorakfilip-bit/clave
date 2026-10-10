@@ -14,6 +14,8 @@ export interface FestivalSummary {
 }
 
 export interface Festival extends FestivalSummary {
+  /** Krátký název pod ikonou na ploše telefonu (max. 15 znaků). */
+  shortName: string | null;
   descriptionCs: string | null;
   descriptionEn: string | null;
   timezone: string;

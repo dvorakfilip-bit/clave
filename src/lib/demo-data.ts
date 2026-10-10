@@ -145,6 +145,7 @@ export const demoProgram: FestivalProgram = {
     id: FESTIVAL_ID,
     slug: "demo-2027",
     name: "Demo Salsa Festival 2027",
+    shortName: "Demo Salsa",
     startDate: days[0].date,
     endDate: days[days.length - 1].date,
     status: "published",

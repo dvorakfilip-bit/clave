@@ -58,6 +58,7 @@ export async function loadProgram(db: SupabaseClient, slug: string): Promise<Fes
       descriptionCs: f.description_cs,
       descriptionEn: f.description_en,
       timezone: f.timezone,
+      shortName: f.short_name ?? null,
       font: f.font,
     },
     days: days.data!.map((d) => ({ id: d.id, date: d.date })),

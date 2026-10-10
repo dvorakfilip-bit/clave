@@ -6,6 +6,7 @@ import { PersonalProvider } from "@/components/festival/PersonalContext";
 import { ProgramProvider } from "@/components/festival/ProgramContext";
 import { fontFamily } from "@/lib/font-list";
 import { getFestivalProgram } from "@/lib/program";
+import { shortName } from "@/lib/short-name";
 import { festivalThemeCss, styleCss } from "@/lib/theme";
 
 async function Festival({ params, children }: { params: Promise<{ festival: string }>; children: React.ReactNode }) {
@@ -39,7 +40,8 @@ export async function generateMetadata({ params }: LayoutProps<"/[festival]">): 
     description: f.descriptionCs ?? f.descriptionEn ?? undefined,
     manifest: `/${f.slug}/manifest.webmanifest`,
     icons: f.logoSquareUrl ? { icon: f.logoSquareUrl, apple: f.logoSquareUrl } : { icon: "/clave-logo.svg", apple: "/icon-180.png" },
-    appleWebApp: { capable: true, title: f.name, statusBarStyle: "default" },
+    // Na iPhonu je tohle název pod ikonou na ploše.
+    appleWebApp: { capable: true, title: shortName(f), statusBarStyle: "default" },
   };
 }
 

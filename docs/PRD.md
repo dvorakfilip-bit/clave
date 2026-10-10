@@ -135,7 +135,8 @@ Pravidla:
 ### 5.4 Správa festivalu (organizátor)
 
 **Festival**
-- Název, URL slug, termín (dny), **časové pásmo**, popis.
+- Název, krátký název pod ikonou na ploše telefonu (max. 15 znaků), URL slug, termín (dny), **časové pásmo**, popis.
+- Nainstalovaná aplikace (PWA) se při spuštění jmenuje „<název festivalu> · Clave“, pod ikonou krátký název.
 - Vizuální identita (logo, banner, barvy, písmo) – nastavuje hlavní organizátor, viz kap. 7.
 - Stav **koncept / zveřejněno / archiv**:
   - Koncept: program vidí jen organizátoři festivalu.

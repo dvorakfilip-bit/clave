@@ -16,6 +16,7 @@ const clean = (v: string | null | undefined) => (v && v.trim() ? v.trim() : null
 
 export interface FestivalInput {
   name: string;
+  shortName: string;
   descriptionCs: string;
   descriptionEn: string;
   startDate: string;
@@ -27,6 +28,7 @@ export interface FestivalInput {
 export async function updateFestival(slug: string, input: FestivalInput): Promise<ActionResult> {
   return withFestival(slug, async ({ db, festivalId, log }) => {
     if (!input.name.trim()) return fail("Vyplň název festivalu.");
+    if (input.shortName.trim().length > 15) return fail("Krátký název může mít nejvýš 15 znaků.");
     if (input.endDate < input.startDate) return fail("Konec festivalu je před začátkem.");
     const dates = datesBetween(input.startDate, input.endDate);
     if (dates.length > 30) return fail("Festival může trvat nejvýš 30 dní.");
@@ -49,6 +51,7 @@ export async function updateFestival(slug: string, input: FestivalInput): Promis
       .from("festivals")
       .update({
         name: input.name.trim(),
+        short_name: clean(input.shortName),
         description_cs: clean(input.descriptionCs),
         description_en: clean(input.descriptionEn),
         start_date: input.startDate,

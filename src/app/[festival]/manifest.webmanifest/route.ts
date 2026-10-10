@@ -1,4 +1,5 @@
 import { getFestivalProgram } from "@/lib/program";
+import { shortName } from "@/lib/short-name";
 import { festivalPalette } from "@/lib/theme";
 
 /**
@@ -22,8 +23,9 @@ export async function GET(_req: Request, { params }: RouteContext<"/[festival]/m
 
   const manifest = {
     id: `/${f.slug}`,
-    name: f.name,
-    short_name: f.name.length > 14 ? f.name.split(/\s+/).slice(0, 2).join(" ") : f.name,
+    // Při spuštění a v přepínači aplikací plný název s Clave, pod ikonou krátký název festivalu.
+    name: `${f.name} · Clave`,
+    short_name: shortName(f),
     description: f.descriptionCs ?? f.descriptionEn ?? undefined,
     start_url: `/${f.slug}`,
     scope: `/${f.slug}`,
