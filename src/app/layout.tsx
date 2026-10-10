@@ -6,11 +6,12 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: { default: "Clave", template: "%s · Clave" },
   description: "Program tanečních festivalů v mobilu.",
-  icons: { icon: "/clave-logo.svg" },
+  icons: { icon: "/clave-logo.svg", apple: "/icon-180.png" },
+  appleWebApp: { capable: true, title: "Clave", statusBarStyle: "default" },
 };
 
+// Barvu lišty (theme-color) určuje každá stránka sama – festival podle své hlavní barvy.
 export const viewport: Viewport = {
-  themeColor: "#C8102E",
   width: "device-width",
   initialScale: 1,
 };

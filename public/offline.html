@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="cs">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Offline · Clave</title>
+    <style>
+      :root { --page: #f7f6f3; --ink: #1b1b1b; --muted: #6b6b70; --brand: #c8102e; }
+      @media (prefers-color-scheme: dark) { :root { --page: #121215; --ink: #ececec; --muted: #9a9aa2; } }
+      body { margin: 0; min-height: 100dvh; display: flex; align-items: center; justify-content: center; background: var(--page); color: var(--ink); font-family: system-ui, sans-serif; text-align: center; padding: 24px; box-sizing: border-box; }
+      p { color: var(--muted); max-width: 320px; line-height: 1.5; }
+      button { margin-top: 12px; border: 0; border-radius: 8px; background: var(--brand); color: #fff; padding: 10px 18px; font-size: 15px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <svg width="56" height="56" viewBox="0 0 100 100" aria-hidden="true"><rect width="100" height="100" rx="22" fill="#C8102E"/><circle cx="16" cy="50" r="5" fill="#fff"/><circle cx="32" cy="50" r="5" fill="#fff"/><circle cx="56" cy="50" r="5" fill="#fff"/><circle cx="71" cy="50" r="5" fill="#fff"/><circle cx="86" cy="50" r="5" fill="#fff"/></svg>
+      <h1>Jsi offline</h1>
+      <p>Tahle stránka není uložená v telefonu. Program, Můj program a praktické informace festivalu fungují i bez signálu.</p>
+      <p lang="en">You're offline. This page isn't saved on your device.</p>
+      <button onclick="history.length > 1 ? history.back() : (location.href = '/')">Zpět</button>
+    </main>
+  </body>
+</html>

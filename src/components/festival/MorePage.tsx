@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ClaveLogo } from "@/components/ClaveLogo";
 import { useI18n } from "@/lib/i18n";
 import { usePathname } from "next/navigation";
+import { InstallHint } from "./InstallHint";
 import { usePersonal } from "./PersonalContext";
 import { useProgram } from "./ProgramContext";
 
@@ -32,6 +33,8 @@ export function MorePage() {
       )}
 
       {description && <p className="text-sm leading-relaxed">{description}</p>}
+
+      <InstallHint />
 
       {program.infoPages.length > 0 && (
         <section>

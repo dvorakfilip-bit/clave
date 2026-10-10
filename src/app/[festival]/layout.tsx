@@ -18,6 +18,8 @@ async function Festival({ params, children }: { params: Promise<{ festival: stri
   return (
     <div className="festival flex min-h-dvh flex-col bg-page text-ink" style={{ fontFamily: fontFamily(program.festival.font) }}>
       <style>{css}</style>
+      {/* Barva lišty prohlížeče a aplikace na ploše (React ji přesune do <head>). */}
+      <meta name="theme-color" content={program.festival.colors[0]} />
       <ProgramProvider program={program}>
         <PersonalProvider>
           <FestivalShell>{children}</FestivalShell>
@@ -35,7 +37,9 @@ export async function generateMetadata({ params }: LayoutProps<"/[festival]">): 
   return {
     title: { default: f.name, template: `%s · ${f.name}` },
     description: f.descriptionCs ?? f.descriptionEn ?? undefined,
-    icons: f.logoSquareUrl ? { icon: f.logoSquareUrl, apple: f.logoSquareUrl } : undefined,
+    manifest: `/${f.slug}/manifest.webmanifest`,
+    icons: f.logoSquareUrl ? { icon: f.logoSquareUrl, apple: f.logoSquareUrl } : { icon: "/clave-logo.svg", apple: "/icon-180.png" },
+    appleWebApp: { capable: true, title: f.name, statusBarStyle: "default" },
   };
 }
 

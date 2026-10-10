@@ -57,6 +57,11 @@ const dict = {
     offlineSave: "Výběr se nepodařilo uložit. Zkontroluj připojení k internetu.",
     manageFestival: "Spravovat festival",
     teacherProfile: "Můj profil učitele",
+    offlineBanner: "Jsi offline – zobrazuji program uložený v telefonu.",
+    installTitle: "Přidat na plochu",
+    installText: "Program pak otevřeš jedním klepnutím jako aplikaci a funguje i bez signálu.",
+    installButton: "Přidat na plochu",
+    installIos: "V Safari klepni na Sdílet (čtverec se šipkou) a vyber „Přidat na plochu“.",
   },
   en: {
     festivals: "Festivals",
@@ -111,6 +116,11 @@ const dict = {
     offlineSave: "Couldn't save your selection. Check your internet connection.",
     manageFestival: "Manage festival",
     teacherProfile: "My teacher profile",
+    offlineBanner: "You're offline – showing the program saved on your phone.",
+    installTitle: "Add to home screen",
+    installText: "Open the program with one tap like an app – it works without signal too.",
+    installButton: "Add to home screen",
+    installIos: "In Safari tap Share (square with an arrow) and choose “Add to Home Screen”.",
   },
 } as const;
 

@@ -58,7 +58,8 @@ export function PersonalProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!supabaseConfigured) return;
     const db = createBrowserSupabase();
-    db.auth.getUser().then(({ data }) => setUser(data.user));
+    // getSession čte přihlášení z prohlížeče – funguje i bez signálu (data stejně hlídá RLS).
+    db.auth.getSession().then(({ data }) => setUser(data.session?.user ?? null));
     const { data: sub } = db.auth.onAuthStateChange((_e, session) => setUser(session?.user ?? null));
     return () => sub.subscription.unsubscribe();
   }, []);
@@ -73,6 +74,11 @@ export function PersonalProvider({ children }: { children: React.ReactNode }) {
     }
     const db = createBrowserSupabase();
     let cancelled = false;
+    const storageKey = `clave.selection.${festivalId}.${user.id}`;
+    try {
+      const cached = localStorage.getItem(storageKey);
+      if (cached) setSelection(new Map(JSON.parse(cached) as [string, string][]));
+    } catch {}
     (async () => {
       const [{ data: rows }, { data: visit }, { data: organizer }, { data: teacher }] = await Promise.all([
         db.rpc("my_selections", { fid: festivalId }),
@@ -87,6 +93,7 @@ export function PersonalProvider({ children }: { children: React.ReactNode }) {
       for (const r of (rows ?? []) as { lesson_id: string | null; party_id: string | null; created_at: string }[]) {
         map.set(r.lesson_id ? `lesson:${r.lesson_id}` : `party:${r.party_id}`, r.created_at);
       }
+      if (!rows) return; // bez signálu zůstane uložený výběr
       setSelection(map);
       if (visit) {
         setLastSeen(visit.last_seen_at);
@@ -101,6 +108,14 @@ export function PersonalProvider({ children }: { children: React.ReactNode }) {
       cancelled = true;
     };
   }, [user, festivalId]);
+
+  // Osobní výběr se drží i v telefonu, aby Můj program fungoval offline (PRD 6.2).
+  useEffect(() => {
+    if (!user) return;
+    try {
+      localStorage.setItem(`clave.selection.${festivalId}.${user.id}`, JSON.stringify([...selection]));
+    } catch {}
+  }, [selection, user, festivalId]);
 
   const timeOf = useCallback(
     (ref: ItemRef): { dayId: string; range: [number, number] } | null => {

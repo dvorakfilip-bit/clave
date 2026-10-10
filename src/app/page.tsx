@@ -12,6 +12,7 @@ async function Festivals() {
 export default function Home() {
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-8">
+      <meta name="theme-color" content="#C8102E" />
       <div className="mb-8 flex items-center gap-3">
         <ClaveLogo size={44} />
         <span className="text-3xl font-semibold tracking-wide text-brand dark:text-ink">clave</span>

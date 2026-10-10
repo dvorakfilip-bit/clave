@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { CalendarIcon, HeartIcon, MenuIcon, UsersIcon } from "@/components/icons";
 import { useI18n } from "@/lib/i18n";
 import { formatRange } from "@/lib/time";
+import { OfflineSupport } from "./OfflineSupport";
 import { useProgram } from "./ProgramContext";
 
 function initials(name: string) {
@@ -52,6 +53,7 @@ export function FestivalShell({ children }: { children: React.ReactNode }) {
           </Link>
         </div>
       </header>
+      <OfflineSupport />
 
       <main className="mx-auto w-full max-w-5xl flex-1 pb-20">{children}</main>
 
