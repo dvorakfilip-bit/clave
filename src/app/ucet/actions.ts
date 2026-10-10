@@ -3,6 +3,7 @@
 import { updateTag } from "next/cache";
 import { type ActionResult, dbError } from "@/lib/admin/guard";
 import { festivalTag } from "@/lib/program";
+import { m } from "@/lib/server-locale";
 import { createServerSupabase } from "@/lib/supabase/server";
 
 const clean = (v: string | null | undefined) => (v && v.trim() ? v.trim() : null);
@@ -22,9 +23,11 @@ export async function updateMyTeacherProfile(input: { name: string; bioCs: strin
   const {
     data: { user },
   } = await db.auth.getUser();
-  if (!user) return { ok: false, error: "Nejsi přihlášený." };
-  if (!input.name.trim()) return { ok: false, error: "Vyplň jméno." };
-  if (clean(input.photoUrl) && !input.photoUrl.trim().startsWith("https://")) return { ok: false, error: "Odkaz na fotku musí začínat https://." };
+  if (!user) return { ok: false, error: await m("Nejsi přihlášený.", "You're not signed in.") };
+  if (!input.name.trim()) return { ok: false, error: await m("Vyplň jméno.", "Enter your name.") };
+  if (clean(input.photoUrl) && !input.photoUrl.trim().startsWith("https://")) {
+    return { ok: false, error: await m("Odkaz na fotku musí začínat https://.", "The photo link must start with https://.") };
+  }
 
   const { data, error } = await db
     .from("teacher_profiles")
@@ -32,7 +35,7 @@ export async function updateMyTeacherProfile(input: { name: string; bioCs: strin
     .eq("user_id", user.id)
     .select("id")
     .single();
-  if (error) return { ok: false, error: dbError(error) };
+  if (error) return { ok: false, error: await dbError(error) };
   await refreshFestivals(db, data.id);
   return { ok: true };
 }
@@ -43,11 +46,11 @@ export async function revertMyTeacherProfile(revisionId: number): Promise<Action
   const {
     data: { user },
   } = await db.auth.getUser();
-  if (!user) return { ok: false, error: "Nejsi přihlášený." };
+  if (!user) return { ok: false, error: await m("Nejsi přihlášený.", "You're not signed in.") };
 
   const { data: revisions } = await db.rpc("my_teacher_revisions");
   const revision = (revisions as { id: number; previous: Record<string, string | null> }[] | null)?.find((r) => r.id === revisionId);
-  if (!revision) return { ok: false, error: "Verze nenalezena." };
+  if (!revision) return { ok: false, error: await m("Verze nenalezena.", "Version not found.") };
 
   const p = revision.previous;
   const { data, error } = await db
@@ -56,7 +59,7 @@ export async function revertMyTeacherProfile(revisionId: number): Promise<Action
     .eq("user_id", user.id)
     .select("id")
     .single();
-  if (error) return { ok: false, error: dbError(error) };
+  if (error) return { ok: false, error: await dbError(error) };
   await refreshFestivals(db, data.id);
   return { ok: true };
 }

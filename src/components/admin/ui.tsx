@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import type { ActionResult } from "@/lib/admin/guard";
+import { useI18n } from "@/lib/i18n";
 
 /**
  * Spustí serverovou akci, zobrazí chybu, u varování se zeptá na potvrzení
@@ -88,6 +89,7 @@ export function Card({ title, children, actions }: { title?: string; children: R
 
 /** Jednoduché modální okno (formuláře lekcí, párty…). */
 export function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  const { tr } = useI18n();
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={onClose}>
       <div
@@ -98,7 +100,7 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
       >
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold">{title}</h2>
-          <button onClick={onClose} className="px-2 text-xl text-muted" aria-label="Zavřít">
+          <button onClick={onClose} className="px-2 text-xl text-muted" aria-label={tr("Zavřít", "Close")}>
             ×
           </button>
         </div>
@@ -111,7 +113,8 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
 export const LEVELS = [0, 0.5, 1, 1.5, 2, 2.5, 3];
 
 /** Tlačítko, které zkopíruje text do schránky a krátce potvrdí „Zkopírováno“. */
-export function CopyButton({ text, label = "Zkopírovat", variant = "secondary" }: { text: string; label?: string; variant?: "primary" | "secondary" | "ghost" }) {
+export function CopyButton({ text, label, variant = "secondary" }: { text: string; label?: string; variant?: "primary" | "secondary" | "ghost" }) {
+  const { tr } = useI18n();
   const [copied, setCopied] = useState(false);
   return (
     <Button
@@ -123,11 +126,11 @@ export function CopyButton({ text, label = "Zkopírovat", variant = "secondary" 
           setCopied(true);
           setTimeout(() => setCopied(false), 2000);
         } catch {
-          window.prompt("Zkopíruj text:", text);
+          window.prompt(tr("Zkopíruj text:", "Copy the text:"), text);
         }
       }}
     >
-      {copied ? "Zkopírováno" : label}
+      {copied ? tr("Zkopírováno", "Copied") : (label ?? tr("Zkopírovat", "Copy"))}
     </Button>
   );
 }

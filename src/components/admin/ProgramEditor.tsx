@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { LevelDots } from "@/components/LevelDots";
+import { useI18n } from "@/lib/i18n";
 import { crossesMidnight, formatDayLong } from "@/lib/time";
 import type { FestivalProgram, Lesson, Party } from "@/lib/types";
 import { LessonForm } from "./LessonForm";
@@ -16,6 +17,7 @@ type Editing =
 
 /** Mřížka pro organizátora: klik na prázdnou buňku = nová lekce, klik na lekci = úprava. */
 export function ProgramEditor({ program }: { program: FestivalProgram }) {
+  const { locale, tr } = useI18n();
   const [dayId, setDayId] = useState(program.days[0]?.id ?? "");
   const [editing, setEditing] = useState<Editing>(null);
   const base = `/admin/${program.festival.slug}`;
@@ -29,16 +31,16 @@ export function ProgramEditor({ program }: { program: FestivalProgram }) {
   const slotIndex = new Map(slots.map((s, i) => [s.id, i]));
 
   const missing = [
-    !program.slots.length && { href: `${base}/casy`, label: "časové sloty" },
-    !program.rooms.length && { href: `${base}/mistnosti`, label: "místnosti" },
-    !program.teachers.length && { href: `${base}/ucitele`, label: "učitele" },
+    !program.slots.length && { href: `${base}/casy`, label: tr("časové sloty", "time slots") },
+    !program.rooms.length && { href: `${base}/mistnosti`, label: tr("místnosti", "rooms") },
+    !program.teachers.length && { href: `${base}/ucitele`, label: tr("učitele", "teachers") },
   ].filter(Boolean) as { href: string; label: string }[];
 
   if (missing.length) {
     return (
       <Card>
         <p className="text-sm">
-          Než začneš zadávat lekce, doplň:{" "}
+          {tr("Než začneš zadávat lekce, doplň:", "Before adding classes, set up:")}{" "}
           {missing.map((m, i) => (
             <span key={m.href}>
               {i > 0 && ", "}
@@ -71,16 +73,16 @@ export function ProgramEditor({ program }: { program: FestivalProgram }) {
             onClick={() => setDayId(d.id)}
             className={`rounded-full px-3 py-1.5 text-xs capitalize ${d.id === dayId ? "bg-brand text-on-brand" : "border border-line"}`}
           >
-            {formatDayLong(d.date, "cs")}
+            {formatDayLong(d.date, locale)}
           </button>
         ))}
       </div>
 
       {slots.length === 0 ? (
         <p className="text-sm text-muted">
-          Tento den nemá časové sloty.{" "}
+          {tr("Tento den nemá časové sloty.", "This day has no time slots.")}{" "}
           <Link href={`${base}/casy`} className="underline">
-            Přidat sloty
+            {tr("Přidat sloty", "Add time slots")}
           </Link>
         </p>
       ) : (
@@ -110,7 +112,7 @@ export function ProgramEditor({ program }: { program: FestivalProgram }) {
                       style={pos}
                       onClick={() => setEditing({ kind: "lesson", slotId: slot.id, roomId: room.id })}
                       className="min-h-[76px] rounded-lg border border-dashed border-line text-xl text-muted hover:bg-surface"
-                      aria-label={`Nová lekce ${slot.startsAt}, ${room.name}`}
+                      aria-label={`${tr("Nová lekce", "New class")} ${slot.startsAt}, ${room.name}`}
                     >
                       +
                     </button>
@@ -127,13 +129,13 @@ export function ProgramEditor({ program }: { program: FestivalProgram }) {
                   >
                     <span className="flex items-center gap-1 text-[10px] text-muted">
                       <span className="h-2 w-2 rounded-full" style={{ background: style?.color ?? "#999" }} />
-                      {style?.name ?? "bez stylu"}
+                      {style?.name ?? tr("bez stylu", "no style")}
                     </span>
                     <span className={`mt-1 block font-semibold ${lesson.cancelled ? "line-through" : ""}`}>{lesson.titleCs ?? lesson.titleEn}</span>
                     <span className="block text-muted">{lesson.teacherIds.map((id) => teacherById.get(id)?.name).join(", ")}</span>
                     <span className="mt-1 flex items-center justify-between">
                       <LevelDots level={lesson.level} />
-                      {lesson.cancelled && <span className="text-[10px] font-semibold uppercase text-highlight">Zrušeno</span>}
+                      {lesson.cancelled && <span className="text-[10px] font-semibold uppercase text-highlight">{tr("Zrušeno", "Cancelled")}</span>}
                     </span>
                   </button>
                 );
@@ -143,7 +145,7 @@ export function ProgramEditor({ program }: { program: FestivalProgram }) {
         </div>
       )}
 
-      <Card title="Párty" actions={<Button onClick={() => setEditing({ kind: "party" })}>Přidat párty</Button>}>
+      <Card title={tr("Párty", "Parties")} actions={<Button onClick={() => setEditing({ kind: "party" })}>{tr("Přidat párty", "Add party")}</Button>}>
         {parties.length ? (
           <ul className="divide-y divide-line">
             {parties.map((p) => (
@@ -161,7 +163,7 @@ export function ProgramEditor({ program }: { program: FestivalProgram }) {
             ))}
           </ul>
         ) : (
-          <p className="text-sm text-muted">Tento den nemá žádnou párty.</p>
+          <p className="text-sm text-muted">{tr("Tento den nemá žádnou párty.", "This day has no parties.")}</p>
         )}
       </Card>
 

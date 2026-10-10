@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { deleteLesson, saveLesson, setLessonCancelled } from "@/app/admin/actions";
 import { LevelDots } from "@/components/LevelDots";
+import { useI18n } from "@/lib/i18n";
 import type { FestivalProgram, Lesson } from "@/lib/types";
 import { Button, ErrorText, Field, inputCls, LEVELS, Modal, useAction } from "./ui";
 
@@ -22,6 +23,7 @@ export function LessonForm({
   onClose: () => void;
 }) {
   const slug = program.festival.slug;
+  const { tr } = useI18n();
   const { run, pending, error } = useAction();
   const [f, setF] = useState({
     dayId: lesson?.dayId ?? dayId,
@@ -51,7 +53,7 @@ export function LessonForm({
   }
 
   return (
-    <Modal title={lesson ? "Upravit lekci" : "Nová lekce"} onClose={onClose}>
+    <Modal title={lesson ? tr("Upravit lekci", "Edit class") : tr("Nová lekce", "New class")} onClose={onClose}>
       <form
         className="space-y-3"
         onSubmit={(e) => {
@@ -60,13 +62,13 @@ export function LessonForm({
         }}
       >
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Název (česky)">
+          <Field label={tr("Název (česky)", "Title (Czech)")}>
             <input className={inputCls} value={f.titleCs} onChange={(e) => setF({ ...f, titleCs: e.target.value })} />
           </Field>
-          <Field label="Název (anglicky)">
+          <Field label={tr("Název (anglicky)", "Title (English)")}>
             <input className={inputCls} value={f.titleEn} onChange={(e) => setF({ ...f, titleEn: e.target.value })} />
           </Field>
-          <Field label="Den">
+          <Field label={tr("Den", "Day")}>
             <select
               className={inputCls}
               value={f.dayId}
@@ -79,7 +81,7 @@ export function LessonForm({
               ))}
             </select>
           </Field>
-          <Field label="Místnost">
+          <Field label={tr("Místnost", "Room")}>
             <select className={inputCls} value={f.roomId} onChange={(e) => setF({ ...f, roomId: e.target.value })}>
               {[...program.rooms]
                 .sort((a, b) => a.position - b.position)
@@ -90,7 +92,7 @@ export function LessonForm({
                 ))}
             </select>
           </Field>
-          <Field label="Začátek">
+          <Field label={tr("Začátek", "Start")}>
             <select className={inputCls} value={f.startSlotId} onChange={(e) => setStart(e.target.value)} required>
               <option value="">—</option>
               {slots.map((s) => (
@@ -100,7 +102,7 @@ export function LessonForm({
               ))}
             </select>
           </Field>
-          <Field label="Konec" hint="Workshop může trvat více slotů.">
+          <Field label={tr("Konec", "End")} hint={tr("Workshop může trvat více slotů.", "A workshop can span several time slots.")}>
             <select className={inputCls} value={f.endSlotId} onChange={(e) => setF({ ...f, endSlotId: e.target.value })} required>
               <option value="">—</option>
               {slots.map((s, i) => (
@@ -110,9 +112,9 @@ export function LessonForm({
               ))}
             </select>
           </Field>
-          <Field label="Styl">
+          <Field label={tr("Styl", "Style")}>
             <select className={inputCls} value={f.styleId ?? ""} onChange={(e) => setF({ ...f, styleId: e.target.value || null })}>
-              <option value="">— bez stylu —</option>
+              <option value="">{tr("— bez stylu —", "— no style —")}</option>
               {program.styles.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
@@ -120,7 +122,7 @@ export function LessonForm({
               ))}
             </select>
           </Field>
-          <Field label="Level" hint="Prázdná kolečka = nejlehčí / pro všechny úrovně.">
+          <Field label="Level" hint={tr("Prázdná kolečka = nejlehčí / pro všechny úrovně.", "Empty dots = easiest / all levels.")}>
             <div className="flex flex-wrap gap-1">
               {LEVELS.map((lv) => (
                 <button
@@ -137,7 +139,7 @@ export function LessonForm({
           </Field>
         </div>
 
-        <Field label="Učitelé">
+        <Field label={tr("Učitelé", "Teachers")}>
           <div className="flex flex-wrap gap-1.5">
             {program.teachers.map((t) => (
               <button
@@ -154,10 +156,10 @@ export function LessonForm({
         </Field>
 
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Popis (česky)">
+          <Field label={tr("Popis (česky)", "Description (Czech)")}>
             <textarea className={inputCls} rows={2} value={f.descriptionCs} onChange={(e) => setF({ ...f, descriptionCs: e.target.value })} />
           </Field>
-          <Field label="Popis (anglicky)">
+          <Field label={tr("Popis (anglicky)", "Description (English)")}>
             <textarea className={inputCls} rows={2} value={f.descriptionEn} onChange={(e) => setF({ ...f, descriptionEn: e.target.value })} />
           </Field>
         </div>
@@ -166,24 +168,31 @@ export function LessonForm({
 
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="primary" disabled={pending}>
-            Uložit
+            {tr("Uložit", "Save")}
           </Button>
           {lesson && (
             <>
               <Button type="button" disabled={pending} onClick={() => run(() => setLessonCancelled(slug, lesson.id, !lesson.cancelled), onClose)}>
-                {lesson.cancelled ? "Obnovit lekci" : "Zrušit lekci"}
+                {lesson.cancelled ? tr("Obnovit lekci", "Restore class") : tr("Zrušit lekci", "Cancel class")}
               </Button>
               <Button
                 type="button"
                 variant="danger"
                 disabled={pending}
                 onClick={() => {
-                  if (window.confirm("Smazat lekci? Zmizí i z osobních programů účastníků. Pokud se jen nekoná, použij raději Zrušit lekci.")) {
+                  if (
+                    window.confirm(
+                      tr(
+                        "Smazat lekci? Zmizí i z osobních programů účastníků. Pokud se jen nekoná, použij raději Zrušit lekci.",
+                        "Delete this class? It will also disappear from attendees' personal programs. If it's just not taking place, use Cancel class instead.",
+                      ),
+                    )
+                  ) {
                     run(() => deleteLesson(slug, lesson.id), onClose);
                   }
                 }}
               >
-                Smazat
+                {tr("Smazat", "Delete")}
               </Button>
             </>
           )}

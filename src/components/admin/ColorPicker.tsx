@@ -2,11 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { HexColorInput, HexColorPicker } from "react-colorful";
+import { useI18n } from "@/lib/i18n";
 
 const SWATCHES = ["#C8102E", "#E45756", "#E08A1E", "#F2A541", "#3E9C4A", "#1E9E9A", "#0E6E8C", "#3F72AF", "#5B1E86", "#C2185B", "#1B1B1B", "#FFFFFF"];
 
 /** Výběr barvy: po kliknutí se rozbalí spektrum, rychlé barvy a kód barvy. */
 export function ColorPicker({ value, onChange, label }: { value: string; onChange: (hex: string) => void; label: string }) {
+  const { tr } = useI18n();
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const valid = /^#[0-9A-Fa-f]{6}$/.test(value) ? value : "#000000";
@@ -31,7 +33,7 @@ export function ColorPicker({ value, onChange, label }: { value: string; onChang
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        aria-label={`${label} – vybrat barvu`}
+        aria-label={`${label} – ${tr("vybrat barvu", "choose color")}`}
         aria-expanded={open}
         className="h-10 w-12 rounded-lg border border-line p-1"
       >
@@ -53,7 +55,7 @@ export function ColorPicker({ value, onChange, label }: { value: string; onChang
             ))}
           </div>
           <label className="flex items-center gap-2 text-xs text-muted">
-            Kód
+            {tr("Kód", "Code")}
             <HexColorInput
               color={valid}
               onChange={(c) => onChange(c.toUpperCase())}
@@ -62,7 +64,7 @@ export function ColorPicker({ value, onChange, label }: { value: string; onChang
             />
           </label>
           <button type="button" onClick={() => setOpen(false)} className="w-full rounded-lg bg-brand py-1.5 text-xs font-semibold text-on-brand">
-            Hotovo
+            {tr("Hotovo", "Done")}
           </button>
         </div>
       )}

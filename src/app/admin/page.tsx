@@ -1,11 +1,15 @@
 import Link from "next/link";
 import { NewFestivalForm } from "@/components/admin/NewFestivalForm";
 import { requireUser } from "@/lib/auth";
+import { getLocale } from "@/lib/server-locale";
 import { SITE_HOST } from "@/lib/site";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { formatRange } from "@/lib/time";
 
-const STATUS = { draft: "Koncept", published: "Zveřejněno", archived: "Archiv" } as const;
+const STATUS = {
+  cs: { draft: "Koncept", published: "Zveřejněno", archived: "Archiv" },
+  en: { draft: "Draft", published: "Published", archived: "Archived" },
+} as const;
 
 // Stránka čte data přihlášeného organizátora – smí počkat na server.
 export const instant = false;
@@ -13,6 +17,8 @@ export const instant = false;
 export default async function AdminHome() {
   const user = await requireUser();
   const db = await createServerSupabase();
+  const locale = await getLocale();
+  const tr = (cs: string, en: string) => (locale === "cs" ? cs : en);
 
   // Správce platformy vidí všechny festivaly, organizátor jen své (RLS).
   const { data: memberships } = await db.from("festival_members").select("festival_id").eq("user_id", user.id);
@@ -22,7 +28,7 @@ export default async function AdminHome() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold">Moje festivaly</h1>
+      <h1 className="text-xl font-semibold">{tr("Moje festivaly", "My festivals")}</h1>
       {festivals?.length ? (
         <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
           {festivals.map((f) => (
@@ -31,17 +37,20 @@ export default async function AdminHome() {
                 <span>
                   <span className="block font-medium">{f.name}</span>
                   <span className="block text-xs text-muted">
-                    {SITE_HOST}/{f.slug} · {formatRange(f.start_date, f.end_date, "cs")}
+                    {SITE_HOST}/{f.slug} · {formatRange(f.start_date, f.end_date, locale)}
                   </span>
                 </span>
-                <span className="rounded-full border border-line px-2 py-0.5 text-xs">{STATUS[f.status as keyof typeof STATUS]}</span>
+                <span className="rounded-full border border-line px-2 py-0.5 text-xs">{STATUS[locale][f.status as keyof (typeof STATUS)["cs"]]}</span>
               </Link>
             </li>
           ))}
         </ul>
       ) : (
         <p className="text-sm text-muted">
-          Zatím nespravuješ žádný festival. Pokud tě organizátor pozval, přihlas se e-mailem, na který přišla pozvánka.
+          {tr(
+            "Zatím nespravuješ žádný festival. Pokud tě organizátor pozval, přihlas se e-mailem, na který přišla pozvánka.",
+            "You don't manage any festival yet. If an organizer invited you, sign in with the email the invitation was sent to.",
+          )}
         </p>
       )}
       {user.isPlatformAdmin && <NewFestivalForm />}

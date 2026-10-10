@@ -6,6 +6,7 @@ import { HeartIcon, MoonIcon } from "@/components/icons";
 import { LevelDots } from "@/components/LevelDots";
 import { DARK_SURFACE, mix } from "@/lib/color";
 import { FONTS, fontFamily } from "@/lib/font-list";
+import { useI18n } from "@/lib/i18n";
 import { paletteWarnings } from "@/lib/palette-check";
 import { festivalPalette } from "@/lib/theme";
 import type { FestivalProgram } from "@/lib/types";
@@ -14,17 +15,18 @@ import { ImageUpload } from "./ImageUpload";
 import { Button, Card, ErrorText, Field, useAction } from "./ui";
 
 const ROLES = [
-  { name: "Hlavní", hint: "Hlavička, vybraný den, tlačítka" },
-  { name: "Doplňková", hint: "Akcenty, podbarvení párty" },
-  { name: "Zvýrazňující", hint: "Štítek Změna, srdíčko, teď probíhá" },
-  { name: "Podklad", hint: "Pozadí stránky" },
-  { name: "Text", hint: "Barva písma" },
+  { name: { cs: "Hlavní", en: "Primary" }, hint: { cs: "Hlavička, vybraný den, tlačítka", en: "Header, selected day, buttons" } },
+  { name: { cs: "Doplňková", en: "Secondary" }, hint: { cs: "Akcenty, podbarvení párty", en: "Accents, party background" } },
+  { name: { cs: "Zvýrazňující", en: "Highlight" }, hint: { cs: "Štítek Změna, srdíčko, teď probíhá", en: "Changed label, heart, happening now" } },
+  { name: { cs: "Podklad", en: "Background" }, hint: { cs: "Pozadí stránky", en: "Page background" } },
+  { name: { cs: "Text", en: "Text" }, hint: { cs: "Barva písma", en: "Font color" } },
 ];
 
 /** Vizuální identita festivalu s živým náhledem (PRD 7.2, 7.3). */
 export function BrandingEditor({ program, isLead }: { program: FestivalProgram; isLead: boolean }) {
   const f = program.festival;
   const { run, pending, error } = useAction();
+  const { locale, tr } = useI18n();
   const [saved, setSaved] = useState(false);
   const [colors, setColors] = useState<string[]>(f.colors);
   const [font, setFont] = useState(f.font);
@@ -33,7 +35,7 @@ export function BrandingEditor({ program, isLead }: { program: FestivalProgram; 
   const [banner, setBanner] = useState(f.bannerUrl ?? "");
   const [dark, setDark] = useState(false);
   const folder = `festivals/${f.id}`;
-  const warnings = paletteWarnings(colors);
+  const warnings = paletteWarnings(colors, locale);
   const touch = <T,>(setter: (v: T) => void) => (v: T) => {
     setSaved(false);
     setter(v);
@@ -47,7 +49,7 @@ export function BrandingEditor({ program, isLead }: { program: FestivalProgram; 
   if (!isLead) {
     return (
       <Card>
-        <p className="text-sm text-muted">Vzhled festivalu nastavuje hlavní organizátor.</p>
+        <p className="text-sm text-muted">{tr("Vzhled festivalu nastavuje hlavní organizátor.", "Only the lead organizer can change the festival appearance.")}</p>
       </Card>
     );
   }
@@ -55,37 +57,42 @@ export function BrandingEditor({ program, isLead }: { program: FestivalProgram; 
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
       <div className="space-y-4">
-        <Card title="Logo a banner">
+        <Card title={tr("Logo a banner", "Logo and banner")}>
           <div className="space-y-4">
-            <Field label="Široké logo" hint="Hlavička a úvod festivalu. Ideálně na průhledném pozadí.">
+            <Field label={tr("Široké logo", "Wide logo")} hint={tr("Hlavička a úvod festivalu. Ideálně na průhledném pozadí.", "Header and festival intro. Ideally on a transparent background.")}>
               <ImageUpload value={logoWide} onChange={touch(setLogoWide)} folder={folder} maxSize={800} shape="wide" />
             </Field>
-            <Field label="Čtvercové logo" hint="Ikona na ploše telefonu a v seznamu festivalů.">
+            <Field label={tr("Čtvercové logo", "Square logo")} hint={tr("Ikona na ploše telefonu a v seznamu festivalů.", "Icon on the phone's home screen and in the festival list.")}>
               <ImageUpload value={logoSquare} onChange={touch(setLogoSquare)} folder={folder} maxSize={512} />
             </Field>
-            <Field label="Banner" hint="Úvodní fotka nebo grafika festivalu (na šířku).">
+            <Field label="Banner" hint={tr("Úvodní fotka nebo grafika festivalu (na šířku).", "Main festival photo or graphic (landscape).")}>
               <ImageUpload value={banner} onChange={touch(setBanner)} folder={folder} maxSize={1600} shape="wide" />
             </Field>
           </div>
         </Card>
 
-        <Card title="Barvy">
-          <p className="mb-3 text-xs text-muted">Zadej 1–5 barev. Chybějící se dopočítají z hlavní barvy. Barvu textu na barevných plochách volí aplikace sama.</p>
+        <Card title={tr("Barvy", "Colors")}>
+          <p className="mb-3 text-xs text-muted">
+            {tr(
+              "Zadej 1–5 barev. Chybějící se dopočítají z hlavní barvy. Barvu textu na barevných plochách volí aplikace sama.",
+              "Enter 1–5 colors. Missing ones are derived from the primary color. Text color on colored areas is chosen automatically.",
+            )}
+          </p>
           <ul className="space-y-2">
             {colors.map((c, i) => {
               const warning = warnings.find((w) => w.index === i);
               return (
                 <li key={i}>
                   <div className="flex items-center gap-2">
-                    <ColorPicker value={c} onChange={(hex) => setColor(i, hex)} label={ROLES[i].name} />
+                    <ColorPicker value={c} onChange={(hex) => setColor(i, hex)} label={tr(ROLES[i].name.cs, ROLES[i].name.en)} />
                     <span className="min-w-0 flex-1 text-sm">
-                      <span className="block font-medium">{ROLES[i].name}</span>
-                      <span className="block truncate text-xs text-muted">{ROLES[i].hint}</span>
+                      <span className="block font-medium">{tr(ROLES[i].name.cs, ROLES[i].name.en)}</span>
+                      <span className="block truncate text-xs text-muted">{tr(ROLES[i].hint.cs, ROLES[i].hint.en)}</span>
                     </span>
                     <span className="w-16 shrink-0 text-right">
                       {i > 0 && i === colors.length - 1 && (
                         <Button variant="ghost" type="button" className="!px-1" onClick={() => setColors(colors.slice(0, -1))}>
-                          Odebrat
+                          {tr("Odebrat", "Remove")}
                         </Button>
                       )}
                     </span>
@@ -94,7 +101,7 @@ export function BrandingEditor({ program, isLead }: { program: FestivalProgram; 
                     <p className="mt-1 text-xs text-highlight">
                       {warning.message}{" "}
                       <button type="button" className="underline" onClick={() => setColor(i, warning.suggestion)}>
-                        Použít {warning.suggestion}
+                        {tr("Použít", "Use")} {warning.suggestion}
                       </button>
                     </p>
                   )}
@@ -104,7 +111,7 @@ export function BrandingEditor({ program, isLead }: { program: FestivalProgram; 
           </ul>
           {colors.length < 5 && (
             <Button className="mt-3" type="button" onClick={() => setColors([...colors, colors.length === 3 ? "#FFFFFF" : colors.length === 4 ? "#1B1B1B" : colors[0]])}>
-              Přidat barvu: {ROLES[colors.length].name.toLowerCase()}
+              {tr("Přidat barvu", "Add color")}: {tr(ROLES[colors.length].name.cs, ROLES[colors.length].name.en).toLowerCase()}
             </Button>
           )}
           {warnings.filter((w) => w.index >= colors.length).map((w) => (
@@ -114,7 +121,7 @@ export function BrandingEditor({ program, isLead }: { program: FestivalProgram; 
           ))}
         </Card>
 
-        <Card title="Písmo">
+        <Card title={tr("Písmo", "Font")}>
           <div className="grid gap-2 sm:grid-cols-2">
             {Object.entries(FONTS).map(([key, def]) => (
               <button
@@ -126,7 +133,7 @@ export function BrandingEditor({ program, isLead }: { program: FestivalProgram; 
                 style={{ fontFamily: fontFamily(key) }}
               >
                 <span className="block font-semibold">{def.label}</span>
-                <span className="text-sm text-muted">Příliš žluťoučký kůň</span>
+                <span className="text-sm text-muted">{tr("Příliš žluťoučký kůň", "The quick brown fox")}</span>
               </button>
             ))}
           </div>
@@ -143,19 +150,19 @@ export function BrandingEditor({ program, isLead }: { program: FestivalProgram; 
               )
             }
           >
-            Uložit vzhled
+            {tr("Uložit vzhled", "Save appearance")}
           </Button>
-          {saved && <span className="text-sm text-muted">Uloženo – na webu se projeví do minuty.</span>}
+          {saved && <span className="text-sm text-muted">{tr("Uloženo – na webu se projeví do minuty.", "Saved – changes appear on the site within a minute.")}</span>}
         </div>
         <ErrorText error={error} />
       </div>
 
       <div className="lg:sticky lg:top-4 lg:self-start">
         <div className="mb-2 flex items-center justify-between">
-          <span className="text-sm font-semibold">Náhled</span>
+          <span className="text-sm font-semibold">{tr("Náhled", "Preview")}</span>
           <label className="flex items-center gap-2 text-xs">
             <input type="checkbox" checked={dark} onChange={(e) => setDark(e.target.checked)} />
-            Tmavý režim
+            {tr("Tmavý režim", "Dark mode")}
           </label>
         </div>
         <Preview program={program} colors={colors} font={font} logoWide={logoWide} logoSquare={logoSquare} banner={banner} dark={dark} />
@@ -181,6 +188,7 @@ function Preview({
   banner: string;
   dark: boolean;
 }) {
+  const { locale, t, tr } = useI18n();
   const valid = colors.filter((c) => /^#[0-9A-Fa-f]{6}$/.test(c));
   const vars = festivalPalette(valid.length ? valid : ["#C8102E"])[dark ? "dark" : "light"] as Record<string, string>;
   const f = program.festival;
@@ -210,7 +218,7 @@ function Preview({
         {!logoWide && <span className="truncate text-[13px] font-semibold">{f.name}</span>}
       </div>
       <div className="flex gap-1.5 px-2 py-2" style={{ background: "var(--surface)", borderBottom: "1px solid var(--line)" }}>
-        {["Út 6.", "St 7.", "Čt 8."].map((d, i) => (
+        {(locale === "cs" ? ["Út 6.", "St 7.", "Čt 8."] : ["Tue 6", "Wed 7", "Thu 8"]).map((d, i) => (
           <span
             key={d}
             className="rounded-full px-2.5 py-1 text-[11px]"
@@ -225,7 +233,7 @@ function Preview({
           <div key={s.id} className="relative rounded-lg p-2" style={card(s.color)}>
             {i === 0 && (
               <span className="absolute right-1 top-1 rounded px-1 text-[9px] font-semibold uppercase" style={{ background: "var(--highlight)", color: "var(--on-highlight)" }}>
-                Změna
+                {t("changed")}
               </span>
             )}
             <span className="flex items-center gap-1 text-[10px]">
@@ -247,17 +255,17 @@ function Preview({
         <span style={{ color: "var(--accent)" }}>
           <MoonIcon />
         </span>
-        22:00 Uvítací párty
+        22:00 {tr("Uvítací párty", "Welcome party")}
       </div>
       {banner && (
         // eslint-disable-next-line @next/next/no-img-element -- náhled
         <img src={banner} alt="" className="mx-2 mb-2 h-20 w-[calc(100%-16px)] rounded-lg object-cover" />
       )}
       <div className="grid grid-cols-4 py-2 text-center text-[10px]" style={{ background: "var(--surface)", borderTop: "1px solid var(--line)", color: "var(--muted)" }}>
-        <span style={{ color: dark ? "var(--accent)" : "var(--brand)" }}>Program</span>
-        <span>Můj program</span>
-        <span>Učitelé</span>
-        <span>Více</span>
+        <span style={{ color: dark ? "var(--accent)" : "var(--brand)" }}>{t("program")}</span>
+        <span>{t("myProgram")}</span>
+        <span>{t("teachers")}</span>
+        <span>{t("more")}</span>
       </div>
     </div>
   );

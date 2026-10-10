@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { deleteRoom, deleteStyle, reorderRooms, saveRoom, saveStyle } from "@/app/admin/actions";
 import { contrast, mix } from "@/lib/color";
+import { useI18n } from "@/lib/i18n";
 import type { FestivalProgram, Room, Style } from "@/lib/types";
 import { ColorPicker } from "./ColorPicker";
 import { Button, Card, ErrorText, inputCls, useAction } from "./ui";
@@ -19,6 +20,7 @@ export function RoomsStylesEditor({ program }: { program: FestivalProgram }) {
 function RoomsCard({ program }: { program: FestivalProgram }) {
   const slug = program.festival.slug;
   const { run, pending, error } = useAction();
+  const { tr } = useI18n();
   const [name, setName] = useState("");
   const rooms = [...program.rooms].sort((a, b) => a.position - b.position);
   const used = new Set([...program.lessons.map((l) => l.roomId), ...program.parties.map((p) => p.roomId)]);
@@ -30,8 +32,8 @@ function RoomsCard({ program }: { program: FestivalProgram }) {
   }
 
   return (
-    <Card title="Místnosti">
-      <p className="mb-3 text-xs text-muted">Pořadí určuje pořadí sloupců v mřížce programu.</p>
+    <Card title={tr("Místnosti", "Rooms")}>
+      <p className="mb-3 text-xs text-muted">{tr("Pořadí určuje pořadí sloupců v mřížce programu.", "The order sets the column order in the program grid.")}</p>
       <ul className="divide-y divide-line">
         {rooms.map((r, i) => (
           <RoomRow
@@ -53,8 +55,8 @@ function RoomsCard({ program }: { program: FestivalProgram }) {
           run(() => saveRoom(slug, { name }), () => setName(""));
         }}
       >
-        <input className={inputCls} placeholder="Název místnosti" value={name} onChange={(e) => setName(e.target.value)} required />
-        <Button disabled={pending}>Přidat</Button>
+        <input className={inputCls} placeholder={tr("Název místnosti", "Room name")} value={name} onChange={(e) => setName(e.target.value)} required />
+        <Button disabled={pending}>{tr("Přidat", "Add")}</Button>
       </form>
       <div className="mt-2">
         <ErrorText error={error} />
@@ -72,6 +74,7 @@ function RoomRow(props: {
   onUp?: () => void;
   onDown?: () => void;
 }) {
+  const { tr } = useI18n();
   const [name, setName] = useState(props.room.name);
   return (
     <li className="flex items-center gap-2 py-2">
@@ -80,21 +83,21 @@ function RoomRow(props: {
         value={name}
         onChange={(e) => setName(e.target.value)}
         onBlur={() => name.trim() && name !== props.room.name && props.onRename(name)}
-        aria-label="Název místnosti"
+        aria-label={tr("Název místnosti", "Room name")}
       />
-      <Button variant="ghost" onClick={props.onUp} disabled={!props.onUp || props.pending} aria-label="Posunout nahoru">
+      <Button variant="ghost" onClick={props.onUp} disabled={!props.onUp || props.pending} aria-label={tr("Posunout nahoru", "Move up")}>
         ↑
       </Button>
-      <Button variant="ghost" onClick={props.onDown} disabled={!props.onDown || props.pending} aria-label="Posunout dolů">
+      <Button variant="ghost" onClick={props.onDown} disabled={!props.onDown || props.pending} aria-label={tr("Posunout dolů", "Move down")}>
         ↓
       </Button>
       <Button
         variant="danger"
         onClick={props.onDelete}
         disabled={props.used || props.pending}
-        title={props.used ? "V místnosti jsou lekce nebo párty" : undefined}
+        title={props.used ? tr("V místnosti jsou lekce nebo párty", "The room has classes or parties") : undefined}
       >
-        Smazat
+        {tr("Smazat", "Delete")}
       </Button>
     </li>
   );
@@ -103,10 +106,11 @@ function RoomRow(props: {
 function StylesCard({ program }: { program: FestivalProgram }) {
   const slug = program.festival.slug;
   const { run, pending, error } = useAction();
+  const { tr } = useI18n();
   const [draft, setDraft] = useState({ name: "", color: "#E45756" });
 
   return (
-    <Card title="Styly">
+    <Card title={tr("Styly", "Styles")}>
       <ul className="divide-y divide-line">
         {program.styles.map((s) => (
           <StyleRow
@@ -116,7 +120,7 @@ function StylesCard({ program }: { program: FestivalProgram }) {
             pending={pending}
             onSave={(v) => run(() => saveStyle(slug, { id: s.id, ...v }))}
             onDelete={() => {
-              if (window.confirm(`Smazat styl ${s.name}? Lekce tohoto stylu zůstanou bez stylu.`)) run(() => deleteStyle(slug, s.id));
+              if (window.confirm(tr(`Smazat styl ${s.name}? Lekce tohoto stylu zůstanou bez stylu.`, `Delete style ${s.name}? Its classes will be left without a style.`))) run(() => deleteStyle(slug, s.id));
             }}
           />
         ))}
@@ -128,9 +132,9 @@ function StylesCard({ program }: { program: FestivalProgram }) {
           run(() => saveStyle(slug, draft), () => setDraft({ name: "", color: draft.color }));
         }}
       >
-        <ColorPicker value={draft.color} onChange={(color) => setDraft({ ...draft, color })} label="Barva nového stylu" />
-        <input className={inputCls} placeholder="Název stylu" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} required />
-        <Button disabled={pending}>Přidat</Button>
+        <ColorPicker value={draft.color} onChange={(color) => setDraft({ ...draft, color })} label={tr("Barva nového stylu", "New style color")} />
+        <input className={inputCls} placeholder={tr("Název stylu", "Style name")} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} required />
+        <Button disabled={pending}>{tr("Přidat", "Add")}</Button>
       </form>
       <div className="mt-2">
         <ErrorText error={error} />
@@ -146,6 +150,7 @@ function StyleRow(props: {
   onSave: (v: { name: string; color: string }) => void;
   onDelete: () => void;
 }) {
+  const { tr } = useI18n();
   const [v, setV] = useState({ name: props.style.name, color: props.style.color });
   const dirty = v.name !== props.style.name || v.color.toUpperCase() !== props.style.color.toUpperCase();
   // Varování: barva stylu skoro stejná jako hlavní barva festivalu (PRD 7.3)
@@ -153,22 +158,22 @@ function StyleRow(props: {
   return (
     <li className="py-2">
       <div className="flex items-center gap-2">
-        <ColorPicker value={v.color} onChange={(color) => setV({ ...v, color })} label={`Barva stylu ${v.name}`} />
-        <input className={`${inputCls} flex-1`} value={v.name} onChange={(e) => setV({ ...v, name: e.target.value })} aria-label="Název stylu" />
+        <ColorPicker value={v.color} onChange={(color) => setV({ ...v, color })} label={tr(`Barva stylu ${v.name}`, `Style color ${v.name}`)} />
+        <input className={`${inputCls} flex-1`} value={v.name} onChange={(e) => setV({ ...v, name: e.target.value })} aria-label={tr("Název stylu", "Style name")} />
         <span className="hidden rounded px-2 py-1 text-xs sm:inline" style={{ background: mix(v.color, "#ffffff", 0.84), color: mix(v.color, "#000000", 0.45) }}>
-          Ukázka
+          {tr("Ukázka", "Sample")}
         </span>
         {dirty ? (
           <Button onClick={() => props.onSave(v)} disabled={props.pending}>
-            Uložit
+            {tr("Uložit", "Save")}
           </Button>
         ) : (
           <Button variant="danger" onClick={props.onDelete} disabled={props.pending}>
-            Smazat
+            {tr("Smazat", "Delete")}
           </Button>
         )}
       </div>
-      {clash && <p className="mt-1 text-xs text-highlight">Barva je skoro stejná jako hlavní barva festivalu.</p>}
+      {clash && <p className="mt-1 text-xs text-highlight">{tr("Barva je skoro stejná jako hlavní barva festivalu.", "The color is almost the same as the festival's primary color.")}</p>}
     </li>
   );
 }

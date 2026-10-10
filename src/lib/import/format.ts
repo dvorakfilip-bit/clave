@@ -1,26 +1,29 @@
-import type { FestivalProgram } from "@/lib/types";
+import type { FestivalProgram, Locale } from "@/lib/types";
 
 /**
  * Formát šablony importu/exportu programu (PRD 5.4.1).
  * Jeden řádek = jedna lekce nebo párty.
  */
 export const COLUMNS = [
-  { key: "id", header: "ID", aliases: ["id"] },
-  { key: "kind", header: "Typ", aliases: ["typ", "type"] },
-  { key: "date", header: "Den", aliases: ["den", "datum", "date", "day"] },
-  { key: "start", header: "Začátek", aliases: ["zacatek", "od", "start", "from"] },
-  { key: "end", header: "Konec", aliases: ["konec", "do", "end", "to"] },
-  { key: "room", header: "Místnost", aliases: ["mistnost", "sal", "room", "misto", "place"] },
-  { key: "style", header: "Styl", aliases: ["styl", "style"] },
-  { key: "titleCs", header: "Název CZ", aliases: ["nazev cz", "nazev", "title cz", "title cs"] },
-  { key: "titleEn", header: "Název EN", aliases: ["nazev en", "title en", "title"] },
-  { key: "level", header: "Level", aliases: ["level", "uroven"] },
-  { key: "teachers", header: "Učitelé", aliases: ["ucitele", "ucitel", "teachers", "teacher"] },
-  { key: "descriptionCs", header: "Popis CZ", aliases: ["popis cz", "popis", "description cz", "description cs"] },
-  { key: "descriptionEn", header: "Popis EN", aliases: ["popis en", "description en", "description"] },
+  { key: "id", header: "ID", headerEn: "ID", aliases: ["id"] },
+  { key: "kind", header: "Typ", headerEn: "Type", aliases: ["typ", "type", "kind"] },
+  { key: "date", header: "Den", headerEn: "Day", aliases: ["den", "datum", "date", "day"] },
+  { key: "start", header: "Začátek", headerEn: "Start", aliases: ["zacatek", "od", "start", "from"] },
+  { key: "end", header: "Konec", headerEn: "End", aliases: ["konec", "do", "end", "to"] },
+  { key: "room", header: "Místnost", headerEn: "Room", aliases: ["mistnost", "sal", "room", "misto", "place"] },
+  { key: "style", header: "Styl", headerEn: "Style", aliases: ["styl", "style"] },
+  { key: "titleCs", header: "Název CZ", headerEn: "Title CS", aliases: ["nazev cz", "nazev", "title cz", "title cs"] },
+  { key: "titleEn", header: "Název EN", headerEn: "Title EN", aliases: ["nazev en", "title en", "title"] },
+  { key: "level", header: "Level", headerEn: "Level", aliases: ["level", "uroven"] },
+  { key: "teachers", header: "Učitelé", headerEn: "Teachers", aliases: ["ucitele", "ucitel", "teachers", "teacher"] },
+  { key: "descriptionCs", header: "Popis CZ", headerEn: "Description CS", aliases: ["popis cz", "popis", "description cz", "description cs"] },
+  { key: "descriptionEn", header: "Popis EN", headerEn: "Description EN", aliases: ["popis en", "description en", "description"] },
 ] as const;
 
 export type ColumnKey = (typeof COLUMNS)[number]["key"];
+
+/** Hlavička tabulky v daném jazyce. */
+export const headers = (locale: Locale) => COLUMNS.map((c) => (locale === "en" ? c.headerEn : c.header));
 
 export interface ImportRow {
   /** Číslo řádku v souboru (pro chybové hlášky). */
@@ -86,21 +89,25 @@ function toDate(v: Cell): string | null {
 
 const text = (v: Cell) => (v === null || v === undefined ? "" : v instanceof Date ? v.toISOString() : String(v).trim());
 
-/** Převede tabulku (první řádek = hlavička) na řádky importu. */
-export function parseTable(table: Cell[][]): { rows: ImportRow[]; error: string | null } {
+/** Převede tabulku (první řádek = hlavička) na řádky importu. Hlavička může být česky i anglicky. */
+export function parseTable(table: Cell[][], locale: Locale): { rows: ImportRow[]; error: string | null } {
+  const tr = (cs: string, en: string) => (locale === "en" ? en : cs);
   const headerIndex = table.findIndex((r) => r.some((c) => text(c) !== ""));
-  if (headerIndex < 0) return { rows: [], error: "Soubor je prázdný." };
+  if (headerIndex < 0) return { rows: [], error: tr("Soubor je prázdný.", "The file is empty.") };
   const header = table[headerIndex].map((c) => normalize(text(c)));
 
   const col = new Map<ColumnKey, number>();
   for (const c of COLUMNS) {
-    const i = header.findIndex((h) => h === normalize(c.header) || (c.aliases as readonly string[]).includes(h));
+    const i = header.findIndex((h) => h === normalize(c.header) || h === normalize(c.headerEn) || (c.aliases as readonly string[]).includes(h));
     if (i >= 0) col.set(c.key, i);
   }
   const missing = (["kind", "date", "start", "end"] as ColumnKey[]).filter((k) => !col.has(k));
   if (missing.length) {
-    const names = missing.map((k) => COLUMNS.find((c) => c.key === k)!.header).join(", ");
-    return { rows: [], error: `V hlavičce chybí sloupce: ${names}. Použij šablonu.` };
+    const names = missing
+      .map((k) => COLUMNS.find((c) => c.key === k)!)
+      .map((c) => (locale === "en" ? c.headerEn : c.header))
+      .join(", ");
+    return { rows: [], error: tr(`V hlavičce chybí sloupce: ${names}. Použij šablonu.`, `The header is missing columns: ${names}. Use the template.`) };
   }
 
   const get = (row: Cell[], key: ColumnKey) => (col.has(key) ? row[col.get(key)!] : undefined);
@@ -110,20 +117,23 @@ export function parseTable(table: Cell[][]): { rows: ImportRow[]; error: string 
     if (!r.some((c) => text(c) !== "")) return;
     const errors: string[] = [];
     const kindText = normalize(text(get(r, "kind")));
-    const kind = ["lekce", "lesson", "workshop", ""].includes(kindText) ? "lesson" : ["party", "party", "pary"].includes(kindText) ? "party" : null;
-    if (!kind) errors.push(`neznámý typ „${text(get(r, "kind"))}“ (lekce / párty)`);
+    const kind = ["lekce", "lesson", "class", "workshop", ""].includes(kindText) ? "lesson" : ["party", "pary"].includes(kindText) ? "party" : null;
+    if (!kind) {
+      const value = text(get(r, "kind"));
+      errors.push(tr(`neznámý typ „${value}“ (lekce / párty)`, `unknown type "${value}" (class / party)`));
+    }
 
     const date = toDate(get(r, "date"));
-    if (!date) errors.push("neplatné datum");
+    if (!date) errors.push(tr("neplatné datum", "invalid date"));
     const start = toTime(get(r, "start"));
-    if (!start) errors.push("neplatný začátek");
+    if (!start) errors.push(tr("neplatný začátek", "invalid start time"));
     const end = toTime(get(r, "end"));
-    if (!end && kind !== "party") errors.push("neplatný konec");
+    if (!end && kind !== "party") errors.push(tr("neplatný konec", "invalid end time"));
 
     const levelText = text(get(r, "level")).replace(",", ".");
     const level = levelText === "" ? 0 : Number(levelText);
     if (kind === "lesson" && (Number.isNaN(level) || level < 0 || level > 3 || (level * 2) % 1 !== 0)) {
-      errors.push("level musí být 0–3 po 0,5");
+      errors.push(tr("level musí být 0–3 po 0,5", "level must be 0–3 in steps of 0.5"));
     }
 
     const row: ImportRow = {
@@ -146,31 +156,37 @@ export function parseTable(table: Cell[][]): { rows: ImportRow[]; error: string 
       descriptionEn: text(get(r, "descriptionEn")),
       errors,
     };
-    if (!row.titleCs && !row.titleEn) errors.push("chybí název");
-    if (row.kind === "lesson" && !row.room) errors.push("chybí místnost");
-    if (row.kind === "lesson" && !row.teachers.length) errors.push("chybí učitel");
-    if (row.kind === "party" && !row.room) errors.push("chybí místo");
-    if (row.kind === "lesson" && row.start && row.end && row.end <= row.start) errors.push("konec je před začátkem");
+    if (!row.titleCs && !row.titleEn) errors.push(tr("chybí název", "missing title"));
+    if (row.kind === "lesson" && !row.room) errors.push(tr("chybí místnost", "missing room"));
+    if (row.kind === "lesson" && !row.teachers.length) errors.push(tr("chybí učitel", "missing teacher"));
+    if (row.kind === "party" && !row.room) errors.push(tr("chybí místo", "missing venue"));
+    if (row.kind === "lesson" && row.start && row.end && row.end <= row.start) errors.push(tr("konec je před začátkem", "end is before start"));
     rows.push(row);
   });
 
-  return { rows, error: rows.length ? null : "V souboru nejsou žádné řádky s programem." };
+  return { rows, error: rows.length ? null : tr("V souboru nejsou žádné řádky s programem.", "The file has no program rows.") };
+}
+
+/** Hodnota sloupce Typ v daném jazyce. */
+function kindLabel(kind: "lesson" | "party", locale: Locale) {
+  if (kind === "lesson") return locale === "en" ? "class" : "lekce";
+  return locale === "en" ? "party" : "párty";
 }
 
 /** Aktuální program jako tabulka ve formátu šablony (export s ID). */
-export function programToTable(p: FestivalProgram): string[][] {
+export function programToTable(p: FestivalProgram, locale: Locale): string[][] {
   const day = new Map(p.days.map((d) => [d.id, d.date]));
   const slot = new Map(p.slots.map((s) => [s.id, s]));
   const room = new Map(p.rooms.map((r) => [r.id, r.name]));
   const style = new Map(p.styles.map((s) => [s.id, s.name]));
   const teacher = new Map(p.teachers.map((t) => [t.id, t.name]));
-  const lvl = (n: number) => String(n).replace(".", ",");
+  const lvl = (n: number) => (locale === "en" ? String(n) : String(n).replace(".", ","));
 
   const lessons = [...p.lessons]
     .sort((a, b) => (day.get(a.dayId) ?? "").localeCompare(day.get(b.dayId) ?? "") || (slot.get(a.startSlotId)?.startsAt ?? "").localeCompare(slot.get(b.startSlotId)?.startsAt ?? ""))
     .map((l) => [
       l.id,
-      "lekce",
+      kindLabel("lesson", locale),
       day.get(l.dayId) ?? "",
       slot.get(l.startSlotId)?.startsAt ?? "",
       slot.get(l.endSlotId)?.endsAt ?? "",
@@ -185,7 +201,7 @@ export function programToTable(p: FestivalProgram): string[][] {
     ]);
   const parties = p.parties.map((x) => [
     x.id,
-    "párty",
+    kindLabel("party", locale),
     day.get(x.dayId) ?? "",
     x.startsAt,
     x.endsAt ?? "",
@@ -198,29 +214,32 @@ export function programToTable(p: FestivalProgram): string[][] {
     x.descriptionCs ?? "",
     x.descriptionEn ?? "",
   ]);
-  return [COLUMNS.map((c) => c.header), ...lessons, ...parties];
+  return [headers(locale), ...lessons, ...parties];
 }
 
 /** Prázdná šablona s ukázkovými řádky. */
-export function templateTable(p: FestivalProgram): string[][] {
+export function templateTable(p: FestivalProgram, locale: Locale): string[][] {
   const date = p.days[0]?.date ?? p.festival.startDate;
-  const room = p.rooms[0]?.name ?? "Sál A";
+  const room = p.rooms[0]?.name ?? (locale === "en" ? "Hall A" : "Sál A");
   const style = p.styles[0]?.name ?? "Salsa";
+  const lesson = kindLabel("lesson", locale);
+  const party = kindLabel("party", locale);
   return [
-    COLUMNS.map((c) => c.header),
-    ["", "lekce", date, "11:30", "12:30", room, style, "Otočkové kombinace", "Turn patterns", "1,5", "Ana Ruiz", "", ""],
-    ["", "lekce", date, "12:40", "14:50", room, style, "Workshop přes dva sloty", "Two-slot workshop", "2", "Ana Ruiz, Tomás Kern", "", ""],
-    ["", "párty", date, "22:00", "04:00", "Beach bar", "", "Uvítací párty", "Welcome party", "", "", "", ""],
+    headers(locale),
+    ["", lesson, date, "11:30", "12:30", room, style, "Otočkové kombinace", "Turn patterns", locale === "en" ? "1.5" : "1,5", "Ana Ruiz", "", ""],
+    ["", lesson, date, "12:40", "14:50", room, style, "Workshop přes dva sloty", "Two-slot workshop", "2", "Ana Ruiz, Tomás Kern", "", ""],
+    ["", party, date, "22:00", "04:00", "Beach bar", "", "Uvítací párty", "Welcome party", "", "", "", ""],
   ];
 }
 
 /** Prompt pro organizátorovu vlastní AI – převod PDF / obrázku programu na CSV šablonu (PRD 5.4.1). */
-export function aiPrompt(p: FestivalProgram): string {
+export function aiPrompt(p: FestivalProgram, locale: Locale): string {
+  if (locale === "en") return aiPromptEn(p);
   const list = (items: string[]) => (items.length ? items.map((i) => `"${i}"`).join(", ") : "(zatím žádné – použij názvy z podkladu)");
   return `Převeď přiložený program tanečního festivalu do CSV tabulky pro import do aplikace Clave.
 
 Výstup: pouze CSV (oddělovač čárka, hodnoty s čárkou v uvozovkách), první řádek je hlavička přesně v tomto pořadí:
-${COLUMNS.map((c) => c.header).join(",")}
+${headers("cs").join(",")}
 
 Pravidla pro sloupce:
 - ID: nech prázdné.
@@ -235,4 +254,26 @@ Pravidla pro sloupce:
 - Popis CZ, Popis EN: krátký popis, pokud je v podkladu, jinak prázdné.
 
 Každá lekce bude na samostatném řádku. Nic nevynechávej a nic si nevymýšlej – co v podkladu není, nech prázdné.`;
+}
+
+function aiPromptEn(p: FestivalProgram): string {
+  const list = (items: string[]) => (items.length ? items.map((i) => `"${i}"`).join(", ") : "(none yet – use the names from the source)");
+  return `Convert the attached dance festival program into a CSV table for import into the Clave app.
+
+Output: CSV only (comma as the separator, values containing a comma in double quotes). The first row is the header, exactly in this order:
+${headers("en").join(",")}
+
+Column rules:
+- ID: leave empty.
+- Type: "class" for a class or workshop, "party" for an evening party.
+- Day: date in the format YYYY-MM-DD. The festival runs from ${p.festival.startDate} to ${p.festival.endDate}.
+- Start, End: time in the format HH:MM (24h). A party can end after midnight (e.g. 22:00–04:00).
+- Room: name of the hall. Use exactly these existing names when they match: ${list(p.rooms.map((r) => r.name))}. For a party you can also enter another venue.
+- Style: dance style. Existing styles: ${list(p.styles.map((s) => s.name))}.
+- Title CS, Title EN: class title in Czech and in English (if the source has only one language, leave the other empty).
+- Level: difficulty from 0 to 3 in steps of 0.5 (0 = beginners / all levels, 3 = most advanced). If the source gives no level, enter 0.
+- Teachers: names separated by commas. Existing teachers: ${list(p.teachers.map((t) => t.name))}. Write the names exactly the same way.
+- Description CS, Description EN: short description if the source has one, otherwise empty.
+
+Put each class on its own row. Don't leave anything out and don't make anything up – if something isn't in the source, leave it empty.`;
 }

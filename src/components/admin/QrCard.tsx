@@ -2,6 +2,7 @@
 
 import QRCode from "qrcode";
 import { useMemo } from "react";
+import { useI18n } from "@/lib/i18n";
 import { SITE_URL } from "@/lib/site";
 import { Button, Card } from "./ui";
 
@@ -47,6 +48,7 @@ function download(href: string, fileName: string) {
 }
 
 export function QrCard({ slug, name }: { slug: string; name: string }) {
+  const { tr } = useI18n();
   const url = `${SITE_URL}/${slug}`;
   const svg = useMemo(() => qrSvg(url), [url]);
   const dataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
@@ -63,18 +65,18 @@ export function QrCard({ slug, name }: { slug: string; name: string }) {
   }
 
   return (
-    <Card title="QR kód festivalu">
+    <Card title={tr("QR kód festivalu", "Festival QR code")}>
       <div className="flex flex-wrap items-center gap-4">
         {/* eslint-disable-next-line @next/next/no-img-element -- vygenerovaný obrázek */}
-        <img src={dataUrl} alt={`QR kód – ${name}`} width={160} height={160} className="rounded-lg border border-line" />
+        <img src={dataUrl} alt={`${tr("QR kód", "QR code")} – ${name}`} width={160} height={160} className="rounded-lg border border-line" />
         <div className="space-y-2 text-sm">
           <p>
-            Odkazuje na <span className="font-medium">{url}</span>
+            {tr("Odkazuje na", "Links to")} <span className="font-medium">{url}</span>
           </p>
-          <p className="text-xs text-muted">Pro plakáty a stojánky. Před tiskem ho pro jistotu naskenuj mobilem.</p>
+          <p className="text-xs text-muted">{tr("Pro plakáty a stojánky. Před tiskem ho pro jistotu naskenuj mobilem.", "For posters and table stands. Scan it with your phone before printing to be sure.")}</p>
           <div className="flex gap-2">
-            <Button onClick={downloadPng}>Stáhnout PNG</Button>
-            <Button onClick={() => download(URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" })), `${slug}-qr.svg`)}>Stáhnout SVG</Button>
+            <Button onClick={downloadPng}>{tr("Stáhnout PNG", "Download PNG")}</Button>
+            <Button onClick={() => download(URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" })), `${slug}-qr.svg`)}>{tr("Stáhnout SVG", "Download SVG")}</Button>
           </div>
         </div>
       </div>

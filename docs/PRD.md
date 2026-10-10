@@ -1,6 +1,6 @@
 # PRD – Clave
 
-> Stav: **návrh v0.8** · Datum: 2026-10-09 · Autor: Filip Dvořák
+> Stav: **v0.9** · Datum: 2026-10-10 · Autor: Filip Dvořák
 
 ## 1. Shrnutí
 
@@ -236,6 +236,8 @@ Pravidla:
 ### 6.3 Jazyky
 - Rozhraní česky a anglicky.
 - Obsah zadávaný organizátorem (názvy lekcí, popisy): jeden jazyk povinně, druhý volitelně. Když překlad chybí, zobrazí se originál.
+- Správa pro organizátory je také česky i anglicky (přepínač v hlavičce správy); jazyk se pamatuje v zařízení.
+- Návod pro organizátory (`/pro-organizatory`) česky i anglicky.
 
 ### 6.4 Výkon
 - Program je převážně ke čtení → cachování na CDN, aby aplikace zvládla 20 000 uživatelů denně v rámci free tierů.
@@ -379,6 +381,9 @@ Vše výše uvedené.
 - Žádost o založení festivalu formulářem.
 - Různé úrovně oprávnění organizátorů.
 - Přehodnocení zabezpečení přihlášení organizátorů.
+- Vlastní doména **clave.cz** (napojení na Vercel, přihlášení, QR kódy – proměnná `NEXT_PUBLIC_SITE_URL`).
+- Automatické testy oprávnění proti testovací databázi (RLS – kdo co smí číst a měnit).
+- Rozesílání e-mailů (Resend): pozvánky e-mailem a znovu zapnutí přihlášení odkazem do e-mailu (`NEXT_PUBLIC_MAGIC_LINK`).
 
 ### Později
 - Přístupnost (kontrasty, čtečky obrazovky, zvětšitelné písmo) nad rámec automatické kontroly kontrastu.

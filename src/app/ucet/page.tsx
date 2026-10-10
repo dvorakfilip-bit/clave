@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { ClaveLogo } from "@/components/ClaveLogo";
+import { Tr } from "@/components/Tr";
 import { TeacherProfileForm } from "@/components/TeacherProfileForm";
 import { requireUser } from "@/lib/auth";
+import { getLocale } from "@/lib/server-locale";
 import { createServerSupabase } from "@/lib/supabase/server";
 
 export const metadata = { title: "Můj profil učitele" };
@@ -13,6 +15,8 @@ export const instant = false;
 async function Profile() {
   const user = await requireUser("/ucet");
   const db = await createServerSupabase();
+  const locale = await getLocale();
+  const tr = (cs: string, en: string) => (locale === "cs" ? cs : en);
   const [{ data: profile }, { data: revisions }] = await Promise.all([
     db.from("teacher_profiles").select("id, name, photo_url, bio_cs, bio_en").eq("user_id", user.id).maybeSingle(),
     db.rpc("my_teacher_revisions"),
@@ -21,7 +25,10 @@ async function Profile() {
   if (!profile) {
     return (
       <p className="text-sm text-muted">
-        Tvůj účet ({user.email}) není propojený s profilem učitele. Pokud učíš na festivalu, požádej organizátora, ať tě pozve na tento e-mail.
+        {tr(
+          `Tvůj účet (${user.email}) není propojený s profilem učitele. Pokud učíš na festivalu, požádej organizátora, ať tě pozve na tento e-mail.`,
+          `Your account (${user.email}) isn't linked to a teacher profile. If you teach at a festival, ask the organizer to invite this email.`,
+        )}
       </p>
     );
   }
@@ -40,7 +47,7 @@ async function Profile() {
       />
       {festivals && festivals.length > 0 && (
         <section>
-          <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">Moje festivaly</h2>
+          <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">{tr("Moje festivaly", "My festivals")}</h2>
           <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
             {festivals.map((row) => {
               const f = row.festivals as unknown as { slug: string; name: string } | null;
@@ -65,9 +72,15 @@ export default function AccountPage() {
     <main className="mx-auto w-full max-w-2xl px-4 py-6">
       <Link href="/" className="mb-6 flex items-center gap-2 font-semibold">
         <ClaveLogo size={26} />
-        Můj profil učitele
+        <Tr cs="Můj profil učitele" en="My teacher profile" />
       </Link>
-      <Suspense fallback={<p className="text-sm text-muted">Načítám…</p>}>
+      <Suspense
+        fallback={
+          <p className="text-sm text-muted">
+            <Tr cs="Načítám…" en="Loading…" />
+          </p>
+        }
+      >
         <Profile />
       </Suspense>
     </main>

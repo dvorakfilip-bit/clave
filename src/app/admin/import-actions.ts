@@ -6,6 +6,7 @@ import { type ImportRow, sameName } from "@/lib/import/format";
 import { buildPlan, type ImportPlan, STYLE_PALETTE } from "@/lib/import/plan";
 import { csCount } from "@/lib/plural";
 import { loadProgram } from "@/lib/program";
+import { getLocale, m } from "@/lib/server-locale";
 import type { FestivalProgram } from "@/lib/types";
 
 async function platformTeachers(db: SupabaseClient) {
@@ -13,12 +14,15 @@ async function platformTeachers(db: SupabaseClient) {
   return data ?? [];
 }
 
+/** Anglický tvar podle počtu: 1 item, 2 items. */
+const enCount = (n: number, one: string, other: string) => `${n} ${n === 1 ? one : other}`;
+
 /** Náhled importu – nic se neukládá (PRD 5.4.1). */
 export async function previewImport(slug: string, rows: ImportRow[]): Promise<ActionResult<ImportPlan>> {
   return withFestival<ImportPlan>(slug, async ({ db }) => {
     const program = await loadProgram(db, slug);
-    if (!program) return { ok: false, error: "Festival nenalezen." };
-    return { ok: true, data: buildPlan(program, rows, await platformTeachers(db)) };
+    if (!program) return { ok: false, error: await m("Festival nenalezen.", "Festival not found.") };
+    return { ok: true, data: buildPlan(program, rows, await platformTeachers(db), await getLocale()) };
   });
 }
 
@@ -28,40 +32,49 @@ export async function previewImport(slug: string, rows: ImportRow[]): Promise<Ac
  */
 export async function applyImport(slug: string, rows: ImportRow[], deleteIds: string[]): Promise<ActionResult<string>> {
   return withFestival<string>(slug, async ({ db, festivalId, log }) => {
+    const locale = await getLocale();
     let program = await loadProgram(db, slug);
-    if (!program) return { ok: false, error: "Festival nenalezen." };
-    const plan = buildPlan(program, rows, await platformTeachers(db));
-    if (plan.errorCount) return { ok: false, error: `Import obsahuje chyby (${plan.errorCount}). Oprav je a nahraj soubor znovu.` };
+    if (!program) return { ok: false, error: await m("Festival nenalezen.", "Festival not found.") };
+    const plan = buildPlan(program, rows, await platformTeachers(db), locale);
+    if (plan.errorCount) {
+      return {
+        ok: false,
+        error: await m(
+          `Import obsahuje chyby (${plan.errorCount}). Oprav je a nahraj soubor znovu.`,
+          `The import has errors (${plan.errorCount}). Fix them and upload the file again.`,
+        ),
+      };
+    }
 
     // 1) Nové místnosti, styly, učitelé a časové sloty
     if (plan.newRooms.length) {
       const { error } = await db
         .from("rooms")
         .insert(plan.newRooms.map((name, i) => ({ festival_id: festivalId, name, position: program!.rooms.length + i })));
-      if (error) return { ok: false, error: dbError(error) };
+      if (error) return { ok: false, error: await dbError(error) };
     }
     if (plan.newStyles.length) {
       const { error } = await db
         .from("styles")
         .insert(plan.newStyles.map((name, i) => ({ festival_id: festivalId, name, color: STYLE_PALETTE[(program!.styles.length + i) % STYLE_PALETTE.length] })));
-      if (error) return { ok: false, error: dbError(error) };
+      if (error) return { ok: false, error: await dbError(error) };
     }
     for (const name of plan.newTeachers) {
       const { error } = await db.rpc("create_teacher", { fid: festivalId, teacher_name: name });
-      if (error) return { ok: false, error: dbError(error) };
+      if (error) return { ok: false, error: await dbError(error) };
     }
     if (plan.existingTeachers.length) {
       const { error } = await db
         .from("festival_teachers")
         .upsert(plan.existingTeachers.map((t) => ({ festival_id: festivalId, teacher_profile_id: t.id })));
-      if (error) return { ok: false, error: dbError(error) };
+      if (error) return { ok: false, error: await dbError(error) };
     }
     if (plan.newSlots.length) {
       const dayByDate = new Map(program.days.map((d) => [d.date, d.id]));
       const { error } = await db
         .from("time_slots")
         .insert(plan.newSlots.map((s) => ({ festival_id: festivalId, day_id: dayByDate.get(s.date), starts_at: s.start, ends_at: s.end })));
-      if (error) return { ok: false, error: dbError(error) };
+      if (error) return { ok: false, error: await dbError(error) };
     }
     program = (await loadProgram(db, slug))!;
 
@@ -72,11 +85,11 @@ export async function applyImport(slug: string, rows: ImportRow[], deleteIds: st
     const partyDeletes = toDelete.filter((id) => program!.parties.some((x) => x.id === id));
     if (lessonDeletes.length) {
       const { error } = await db.from("lessons").delete().in("id", lessonDeletes);
-      if (error) return { ok: false, error: dbError(error) };
+      if (error) return { ok: false, error: await dbError(error) };
     }
     if (partyDeletes.length) {
       const { error } = await db.from("parties").delete().in("id", partyDeletes);
-      if (error) return { ok: false, error: dbError(error) };
+      if (error) return { ok: false, error: await dbError(error) };
     }
 
     // 3) Lekce a párty – při dočasné kolizi (lekce si vyměňují místa) se zkouší znovu
@@ -93,7 +106,7 @@ export async function applyImport(slug: string, rows: ImportRow[], deleteIds: st
         const error = row.kind === "lesson" ? await saveLessonRow(db, festivalId, program, row) : await savePartyRow(db, festivalId, program, row);
         if (error) {
           next.push(row);
-          failures.push(`řádek ${row.line}: ${error}`);
+          failures.push(`${locale === "en" ? "row" : "řádek"} ${row.line}: ${error}`);
         }
       }
       if (next.length === pending.length) break;
@@ -109,7 +122,13 @@ export async function applyImport(slug: string, rows: ImportRow[], deleteIds: st
     ].join(", ");
     await log("program", "import", null, summary);
 
-    if (failures.length) return { ok: false, error: `Import proběhl jen částečně. Neuložilo se: ${failures.join("; ")}` };
+    if (failures.length) {
+      const list = failures.join("; ");
+      return { ok: false, error: await m(`Import proběhl jen částečně. Neuložilo se: ${list}`, `The import was only partly completed. Not saved: ${list}`) };
+    }
+    if (locale === "en") {
+      return { ok: true, data: [enCount(created, "new item", "new items"), enCount(updated, "update", "updates"), `${toDelete.length} deleted`].join(", ") };
+    }
     return { ok: true, data: summary };
   });
 }
@@ -127,12 +146,12 @@ function resolveSlots(program: FestivalProgram, dayId: string, start: string, en
 
 async function saveLessonRow(db: SupabaseClient, festivalId: string, program: FestivalProgram, row: ImportRow): Promise<string | null> {
   const dayId = program.days.find((d) => d.date === row.date)?.id;
-  if (!dayId) return "neznámý den";
+  if (!dayId) return m("neznámý den", "unknown day");
   const { startSlot, endSlot } = resolveSlots(program, dayId, row.start, row.end);
   const room = program.rooms.find((r) => sameName(r.name, row.room));
   const style = row.style ? program.styles.find((s) => sameName(s.name, row.style)) : undefined;
   const teacherIds = row.teachers.map((n) => program.teachers.find((t) => sameName(t.name, n))?.id).filter((x): x is string => Boolean(x));
-  if (!startSlot || !endSlot || !room) return "nenalezen slot nebo místnost";
+  if (!startSlot || !endSlot || !room) return m("nenalezen slot nebo místnost", "time slot or room not found");
 
   const payload = {
     festival_id: festivalId,
@@ -150,7 +169,7 @@ async function saveLessonRow(db: SupabaseClient, festivalId: string, program: Fe
   const res = row.id
     ? await db.from("lessons").update(payload).eq("id", row.id).select("id").single()
     : await db.from("lessons").insert(payload).select("id").single();
-  if (res.error) return dbError(res.error);
+  if (res.error) return await dbError(res.error);
   const id = res.data.id as string;
 
   const { data: current } = await db.from("lesson_teachers").select("teacher_profile_id").eq("lesson_id", id);
@@ -160,14 +179,14 @@ async function saveLessonRow(db: SupabaseClient, festivalId: string, program: Fe
   if (removed.length) await db.from("lesson_teachers").delete().eq("lesson_id", id).in("teacher_profile_id", removed);
   if (added.length) {
     const { error } = await db.from("lesson_teachers").insert(added.map((t) => ({ lesson_id: id, teacher_profile_id: t })));
-    if (error) return dbError(error);
+    if (error) return await dbError(error);
   }
   return null;
 }
 
 async function savePartyRow(db: SupabaseClient, festivalId: string, program: FestivalProgram, row: ImportRow): Promise<string | null> {
   const dayId = program.days.find((d) => d.date === row.date)?.id;
-  if (!dayId) return "neznámý den";
+  if (!dayId) return m("neznámý den", "unknown day");
   const room = program.rooms.find((r) => sameName(r.name, row.room));
   const payload = {
     festival_id: festivalId,
@@ -182,7 +201,7 @@ async function savePartyRow(db: SupabaseClient, festivalId: string, program: Fes
     description_en: row.descriptionEn || null,
   };
   const { error } = row.id ? await db.from("parties").update(payload).eq("id", row.id) : await db.from("parties").insert(payload);
-  return error ? dbError(error) : null;
+  return error ? await dbError(error) : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -196,11 +215,19 @@ async function savePartyRow(db: SupabaseClient, festivalId: string, program: Fes
 export async function copyFromFestival(slug: string, sourceSlug: string, withProgram: boolean): Promise<ActionResult<string>> {
   return withFestival<string>(slug, async ({ db, festivalId, log }) => {
     const [target, source] = await Promise.all([loadProgram(db, slug), loadProgram(db, sourceSlug)]);
-    if (!target || !source) return { ok: false, error: "Festival nenalezen." };
+    if (!target || !source) return { ok: false, error: await m("Festival nenalezen.", "Festival not found.") };
     const { data: canSource } = await db.rpc("is_organizer", { fid: source.festival.id });
-    if (!canSource) return { ok: false, error: "Kopírovat lze jen z festivalu, kde jsi organizátor." };
+    if (!canSource) {
+      return { ok: false, error: await m("Kopírovat lze jen z festivalu, kde jsi organizátor.", "You can only copy from a festival where you are an organizer.") };
+    }
     if (target.lessons.length || target.slots.length) {
-      return { ok: false, error: "Kopírovat lze jen do festivalu bez časových slotů a lekcí. Nejdřív je smaž." };
+      return {
+        ok: false,
+        error: await m(
+          "Kopírovat lze jen do festivalu bez časových slotů a lekcí. Nejdřív je smaž.",
+          "You can only copy into a festival with no time slots or classes. Delete them first.",
+        ),
+      };
     }
 
     // Místnosti a styly (stejné názvy se nezdvojují)
@@ -212,7 +239,7 @@ export async function copyFromFestival(slug: string, sourceSlug: string, withPro
         continue;
       }
       const { data, error } = await db.from("rooms").insert({ festival_id: festivalId, name: r.name, position: r.position }).select("id").single();
-      if (error) return { ok: false, error: dbError(error) };
+      if (error) return { ok: false, error: await dbError(error) };
       roomMap.set(r.id, data.id);
     }
     const styleMap = new Map<string, string>();
@@ -223,7 +250,7 @@ export async function copyFromFestival(slug: string, sourceSlug: string, withPro
         continue;
       }
       const { data, error } = await db.from("styles").insert({ festival_id: festivalId, name: s.name, color: s.color }).select("id").single();
-      if (error) return { ok: false, error: dbError(error) };
+      if (error) return { ok: false, error: await dbError(error) };
       styleMap.set(s.id, data.id);
     }
 
@@ -232,7 +259,7 @@ export async function copyFromFestival(slug: string, sourceSlug: string, withPro
       const { error } = await db
         .from("festival_teachers")
         .upsert(source.teachers.map((t) => ({ festival_id: festivalId, teacher_profile_id: t.id })));
-      if (error) return { ok: false, error: dbError(error) };
+      if (error) return { ok: false, error: await dbError(error) };
     }
 
     // Sloty podle pořadí dní (1. den → 1. den…)
@@ -248,7 +275,7 @@ export async function copyFromFestival(slug: string, sourceSlug: string, withPro
           .insert({ festival_id: festivalId, day_id: targetDay.id, starts_at: s.startsAt, ends_at: s.endsAt })
           .select("id")
           .single();
-        if (error) return { ok: false, error: dbError(error) };
+        if (error) return { ok: false, error: await dbError(error) };
         slotMap.set(s.id, data.id);
       }
     }
@@ -275,7 +302,7 @@ export async function copyFromFestival(slug: string, sourceSlug: string, withPro
           })
           .select("id")
           .single();
-        if (error) return { ok: false, error: dbError(error) };
+        if (error) return { ok: false, error: await dbError(error) };
         if (l.teacherIds.length) {
           await db.from("lesson_teachers").insert(l.teacherIds.map((t) => ({ lesson_id: data.id, teacher_profile_id: t })));
         }
@@ -304,6 +331,15 @@ export async function copyFromFestival(slug: string, sourceSlug: string, withPro
       ["učitel", "učitelé", "učitelů"],
     )}, ${csCount(slotMap.size, ["slot", "sloty", "slotů"])}${withProgram ? `, ${csCount(lessonCount, ["lekce", "lekce", "lekcí"])}` : ""}`;
     await log("program", "import", null, `kopie ${summary}`);
+    if ((await getLocale()) === "en") {
+      const parts = [
+        enCount(source.rooms.length, "room", "rooms"),
+        enCount(source.teachers.length, "teacher", "teachers"),
+        enCount(slotMap.size, "time slot", "time slots"),
+        ...(withProgram ? [enCount(lessonCount, "class", "classes")] : []),
+      ];
+      return { ok: true, data: `from ${source.festival.name}: ${parts.join(", ")}` };
+    }
     return { ok: true, data: summary };
   });
 }

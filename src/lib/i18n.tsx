@@ -152,10 +152,21 @@ interface I18n {
   count: (n: number, key: PluralKey) => string;
   /** Vybere text v jazyce uživatele, chybí-li překlad, vrátí originál (PRD 6.3). */
   pick: (cs: string | null | undefined, en: string | null | undefined) => string;
+  /** Text rozhraní zapsaný přímo na místě: tr("Uložit", "Save"). Používá se ve správě. */
+  tr: (cs: string, en: string) => string;
 }
 
 const Ctx = createContext<I18n | null>(null);
 const STORAGE_KEY = "clave.locale";
+/** Cookie s jazykem – podle ní píše server chybové hlášky ve správném jazyce. */
+export const LOCALE_COOKIE = "clave-locale";
+
+function rememberLocale(l: Locale) {
+  try {
+    localStorage.setItem(STORAGE_KEY, l);
+  } catch {}
+  document.cookie = `${LOCALE_COOKIE}=${l}; path=/; max-age=31536000; samesite=lax`;
+}
 
 export function I18nProvider({ children }: { children: React.ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>("cs");
@@ -168,6 +179,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     const initial = stored === "cs" || stored === "en" ? stored : navigator.language.startsWith("cs") ? "cs" : "en";
     // eslint-disable-next-line react-hooks/set-state-in-effect -- jazyk je známý až v prohlížeči
     setLocaleState(initial);
+    rememberLocale(initial);
   }, []);
 
   useEffect(() => {
@@ -176,9 +188,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
 
   const setLocale = useCallback((l: Locale) => {
     setLocaleState(l);
-    try {
-      localStorage.setItem(STORAGE_KEY, l);
-    } catch {}
+    rememberLocale(l);
   }, []);
 
   const t = useCallback((key: MessageKey) => dict[locale][key], [locale]);
@@ -196,7 +206,9 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     [locale],
   );
 
-  return <Ctx.Provider value={{ locale, setLocale, t, count, pick }}>{children}</Ctx.Provider>;
+  const tr = useCallback((cs: string, en: string) => (locale === "cs" ? cs : en), [locale]);
+
+  return <Ctx.Provider value={{ locale, setLocale, t, count, pick, tr }}>{children}</Ctx.Provider>;
 }
 
 export function useI18n() {
